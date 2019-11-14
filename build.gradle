@@ -85,8 +85,8 @@ dependencies {
 
 cordapp {
     info {
-        name "CorDapp Template"
-        vendor "Corda Open Source"
+        name "Energy Account CorDapp"
+        vendor "Ramzi El-Yafi"
         targetPlatformVersion corda_platform_version
         minimumPlatformVersion corda_platform_version
     }

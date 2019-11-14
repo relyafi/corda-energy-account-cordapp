@@ -7,7 +7,7 @@ import net.corda.core.transactions.LedgerTransaction
 // ************
 // * Contract *
 // ************
-class TemplateContract : Contract {
+class AccountContract : Contract {
     companion object {
         // Used to identify our contract when building a transaction.
         const val ID = "com.template.contracts.TemplateContract"
