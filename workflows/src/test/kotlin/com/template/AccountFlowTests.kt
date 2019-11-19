@@ -10,7 +10,7 @@ import org.junit.Test
 
 class AccountFlowTests {
     private val network = MockNetwork(MockNetworkParameters(cordappsForAllNodes = listOf(
-        TestCordapp.findCordapp("com.template.contracts"),
+        TestCordapp.findCordapp("net.corda.examples.energyaccount.contracts"),
         TestCordapp.findCordapp("com.template.flows")
     )))
     private val a = network.createNode()
