@@ -1,4 +1,4 @@
-package com.template
+package net.corda.examples.energyaccount.flows
 
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.core.utilities.NetworkHostAndPort.Companion.parse

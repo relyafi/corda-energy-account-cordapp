@@ -1,6 +1,5 @@
 package net.corda.examples.energyaccount.contracts
 
-import net.corda.examples.energyaccount.contracts.AccountContract.Companion.ID
 import net.corda.testing.node.transaction
 import org.junit.Test
 
@@ -10,7 +9,7 @@ class AccountContractDestroyTests : AccountContractTestBase() {
     fun `Output state provided`() {
         ledgerServices.transaction() {
             input(AccountContract.ID, defaultState)
-            command(britishEnergy.publicKey, AccountContract.Commands.Destroy())
+            command(defaultSigners, AccountContract.Commands.Destroy())
             output(AccountContract.ID, defaultState)
             `fails with` ("No outputs should be created")
         }
@@ -19,7 +18,7 @@ class AccountContractDestroyTests : AccountContractTestBase() {
     @Test
     fun `Wrong number of input states provided`() {
         ledgerServices.transaction() {
-            command(britishEnergy.publicKey, AccountContract.Commands.Destroy())
+            command(defaultSigners, AccountContract.Commands.Destroy())
             `fails with` ("A transaction must contain at least one input or output state")
             input(AccountContract.ID, defaultState)
             input(AccountContract.ID, defaultState.withNewName("Alice", "Anderson"))
@@ -31,8 +30,17 @@ class AccountContractDestroyTests : AccountContractTestBase() {
     fun `The supplier has not signed the transaction`() {
         ledgerServices.transaction() {
             input(AccountContract.ID, defaultState.withNewSupplier(ukPower.party))
-            command(britishEnergy.publicKey, AccountContract.Commands.Destroy())
+            command(defaultSigners, AccountContract.Commands.Destroy())
             `fails with` ("All participants have signed the transaction")
+        }
+    }
+
+    @Test
+    fun `The regulator has not signed the transaction`() {
+        ledgerServices.transaction() {
+            input(AccountContract.ID, defaultState)
+            command(listOf(britishEnergy.publicKey), AccountContract.Commands.Destroy())
+            `fails with` ("The regulator has signed the transaction")
         }
     }
 
@@ -40,7 +48,7 @@ class AccountContractDestroyTests : AccountContractTestBase() {
     fun `Valid destroy transaction`() {
         ledgerServices.transaction() {
             input(AccountContract.ID, defaultState)
-            command(britishEnergy.publicKey, AccountContract.Commands.Destroy())
+            command(defaultSigners, AccountContract.Commands.Destroy())
             verifies()
         }
     }

@@ -1,8 +1,6 @@
 package net.corda.examples.energyaccount.contracts
 
-import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.core.contracts.*
-import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
@@ -17,25 +15,30 @@ class AccountContract : Contract {
 
     companion object {
         const val ID = "net.corda.examples.energyaccount.contracts.AccountContract"
-    }
 
-    fun generateAccountCreate(
-            notary: Party,
-            supplier: AbstractParty,
-            firstName: String,
-            lastName: String) : TransactionBuilder {
+        fun generateAccountCreate(
+                notary: Party,
+                regulator: Party,
+                supplier: Party,
+                firstName: String,
+                lastName: String) : TransactionBuilder {
 
-        return TransactionBuilder(notary)
-                .addOutputState(AccountState(supplier, firstName, lastName))
-                .addCommand(Command(Commands.Create(), supplier.owningKey))
-    }
+            return TransactionBuilder(notary)
+                    .addOutputState(AccountState(regulator, supplier, firstName, lastName))
+                    .addCommand(Command(Commands.Create(), listOf(
+                            regulator.owningKey,
+                            supplier.owningKey)))
+        }
 
-    fun generateAccountDestroy(
-            notary: Party,
-            account: StateAndRef<AccountState>) : TransactionBuilder {
-        return TransactionBuilder(notary)
-                .addInputState(account)
-                .addCommand(Command(Commands.Destroy(), account.state.data.supplier.owningKey))
+        fun generateAccountDestroy(
+                notary: Party,
+                account: StateAndRef<AccountState>) : TransactionBuilder {
+            return TransactionBuilder(notary)
+                    .addInputState(account)
+                    .addCommand(Command(Commands.Destroy(), listOf(
+                            account.state.data.regulator.owningKey,
+                            account.state.data.supplier.owningKey)))
+        }
     }
 
     override fun verify(tx: LedgerTransaction) {
@@ -45,7 +48,7 @@ class AccountContract : Contract {
         when (cmd.value) {
             is Commands.Create -> validateCreate(tx, signers)
             is Commands.Destroy -> validateDestroy(tx, signers)
-            else -> throw IllegalArgumentException("unrecognised command")
+            else -> throw IllegalArgumentException("Unrecognised command")
         }
     }
 
@@ -58,7 +61,6 @@ class AccountContract : Contract {
     private fun validateCreate(tx: LedgerTransaction, signers: Set<PublicKey>) {
 
         requireThat {
-
             "No inputs should be consumed" using tx.inputs.isEmpty()
             "A single account must be created" using (tx.outputs.size == 1)
         }
@@ -68,7 +70,9 @@ class AccountContract : Contract {
 
         requireThat {
             "All participants have signed the transaction" using
-                    (signers == keysFromParticipants(outState))
+                    signers.containsAll(keysFromParticipants(outState))
+            "The regulator has signed the transaction" using
+                    signers.contains(outState.regulator.owningKey)
         }
     }
 
@@ -76,9 +80,14 @@ class AccountContract : Contract {
 
         requireThat {
             "No outputs should be created" using tx.outputs.isEmpty()
-            "A single account must be consumed" using  (tx.inputs.size == 1)
+            "A single account must be consumed" using (tx.inputs.size == 1)
+
+            val inState = tx.inputsOfType<AccountState>().single()
+
             "All participants have signed the transaction" using
-                    (signers == keysFromParticipants(tx.inputsOfType<AccountState>().single()))
+                    signers.containsAll(keysFromParticipants(inState))
+            "The regulator has signed the transaction" using
+                    signers.contains(inState.regulator.owningKey)
         }
     }
 

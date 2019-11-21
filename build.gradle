@@ -101,8 +101,8 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         cordapp project(':workflows')
     }
     node {
-        name "O=Energy Ombudsman (Notary),L=London,C=GB"
-        notary = [validating : true]
+        name "O=Notary,L=London,C=GB"
+        notary = [validating : false]
         p2pPort 10002
         rpcSettings {
             address("localhost:10003")
@@ -110,20 +110,28 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         }
     }
     node {
-        name "O=British Energy,L=Manchester,C=GB"
+        name "O==Government Regulator,L=London,C=GB"
         p2pPort 10005
         rpcSettings {
             address("localhost:10006")
             adminAddress("localhost:10046")
         }
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }
     node {
-        name "O=UK Power,L=Newcastle,C=GB"
+        name "O=British Energy,L=Manchester,C=GB"
         p2pPort 10008
         rpcSettings {
             address("localhost:10009")
             adminAddress("localhost:10049")
+        }
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+    }
+    node {
+        name "O=UK Power,L=Newcastle,C=GB"
+        p2pPort 10011
+        rpcSettings {
+            address("localhost:10012")
+            adminAddress("localhost:10052")
         }
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
     }

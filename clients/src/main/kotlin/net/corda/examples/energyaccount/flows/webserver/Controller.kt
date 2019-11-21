@@ -1,4 +1,4 @@
-package com.template.webserver
+package net.corda.examples.energyaccount.flows.webserver
 
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping

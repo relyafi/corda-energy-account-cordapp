@@ -1,4 +1,4 @@
-package com.template.webserver
+package net.corda.examples.energyaccount.flows.webserver
 
 import org.springframework.boot.Banner
 import org.springframework.boot.SpringApplication
