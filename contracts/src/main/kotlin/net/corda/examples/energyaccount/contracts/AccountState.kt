@@ -12,9 +12,9 @@ data class AccountState(
         val regulator: Party,
         val supplier: Party,
         val firstName: String,
-        val lastName: String) : LinearState {
+        val lastName: String,
+        override val linearId: UniqueIdentifier = UniqueIdentifier()) : LinearState {
 
-    override val linearId: UniqueIdentifier = UniqueIdentifier()
     override val participants: List<AbstractParty> = listOf(supplier)
 
     fun withNewName(firstName: String, lastName: String) =

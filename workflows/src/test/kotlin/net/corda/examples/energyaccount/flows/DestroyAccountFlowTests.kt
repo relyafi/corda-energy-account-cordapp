@@ -1,6 +1,6 @@
 package net.corda.examples.energyaccount.flows
 
-import junit.framework.Assert.assertEquals
+import junit.framework.TestCase.assertEquals
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowException
 import net.corda.core.node.services.queryBy

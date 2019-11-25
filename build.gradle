@@ -110,7 +110,7 @@ task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
         }
     }
     node {
-        name "O==Government Regulator,L=London,C=GB"
+        name "O=Government Regulator,L=London,C=GB"
         p2pPort 10005
         rpcSettings {
             address("localhost:10006")
