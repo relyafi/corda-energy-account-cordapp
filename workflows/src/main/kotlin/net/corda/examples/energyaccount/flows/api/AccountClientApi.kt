@@ -9,8 +9,15 @@ import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.DestroyAccountFlowInitiator
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.web.bind.annotation.*
 
-class AccountClientApi(val rpc: CordaRPCOps) {
+@RestController
+@RequestMapping("/api")
+class AccountClientApi() {
+
+    @Autowired
+    lateinit var rpc: CordaRPCOps
 
     fun createAccount(firstName: String, lastName: String) : AccountState {
 
@@ -39,5 +46,11 @@ class AccountClientApi(val rpc: CordaRPCOps) {
                 AccountState::class.java).states
 
         return ( if (results.size == 1) results.single().state.data else null )
+    }
+
+    @GetMapping(value="/getaccount")
+    fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
+        val uid = UniqueIdentifier.fromString(id)
+        return getAccountByLinearId(uid)
     }
 }

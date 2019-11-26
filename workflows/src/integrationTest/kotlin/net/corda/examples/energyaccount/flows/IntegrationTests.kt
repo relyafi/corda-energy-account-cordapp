@@ -52,15 +52,14 @@ class TraderDemoTest {
                     startNode(providedName = supplierBName, rpcUsers = listOf(user))
             ).map { (it.getOrThrow() as InProcess) }
 
-            val (regulatorRpc, supplierARpc, supplierBRpc) =
+            val (regulatorCli, supplierACli, supplierBCli) =
                     listOf(regulator, supplierA, supplierB).map {
                         val client = CordaRPCClient(it.rpcAddress)
-                        client.start(user.username, user.password).proxy
+                        client.start(user.username, user.password)
+                        val api = AccountClientApi()
+                        api.rpc = it.rpc
+                        api
             }
-
-            val regulatorCli = AccountClientApi(regulatorRpc)
-            val supplierACli = AccountClientApi(supplierARpc)
-            val supplierBCli = AccountClientApi(supplierBRpc)
 
             // Create two accounts, one on each supplier
             val accountAId = supplierACli.createAccount("Alice", "Anderson").linearId
