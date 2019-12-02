@@ -1,4 +1,4 @@
-package net.corda.examples.energyaccount.flows.api
+package net.corda.examples.energyaccount.clients.api
 
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
@@ -10,7 +10,10 @@ import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.DestroyAccountFlowInitiator
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api")
@@ -48,7 +51,7 @@ class AccountClientApi() {
         return ( if (results.size == 1) results.single().state.data else null )
     }
 
-    @GetMapping(value="/getaccount")
+    @GetMapping(value=["/getaccount"])
     fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
         val uid = UniqueIdentifier.fromString(id)
         return getAccountByLinearId(uid)

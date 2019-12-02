@@ -1,4 +1,22 @@
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:$spring_boot_gradle_plugin_version"
+    }
+}
+
+apply plugin: 'net.corda.plugins.quasar-utils'
 apply plugin: 'org.springframework.boot'
+
+bootJar {
+    baseName = "corda-energy-account-webserver"
+    version = "1"
+}
 
 sourceSets {
     main {
@@ -6,26 +24,54 @@ sourceSets {
             srcDir rootProject.file("config/dev")
         }
     }
+    test {
+        resources {
+            srcDir rootProject.file("config/test")
+        }
+    }
+    integrationTest {
+        kotlin {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/kotlin')
+        }
+    }
+}
+
+configurations {
+    integrationTestCompile.extendsFrom testCompile
+    integrationTestRuntime.extendsFrom testRuntime
+
+    compile {
+        // We want to use SLF4J's version of these bindings: jcl-over-slf4j
+        // Remove any transitive dependency on Apache's version.
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+
+    runtime {
+        exclude group: "org.springframework.boot", module: "spring-boot-starter-logging"
+    }
 }
 
 dependencies {
-    // Corda dependencies.
-    compile "$corda_release_group:corda-rpc:$corda_release_version"
-
-    // CorDapp dependencies.
-    compile project(":contracts")
-    compile project(":workflows")
-
-    compile("org.springframework.boot:spring-boot-starter-websocket:$spring_boot_version") {
-        exclude group: "org.springframework.boot", module: "spring-boot-starter-logging"
-    }
-
+    // General dependencies
+    compile "org.springframework.boot:spring-boot-starter-websocket:$spring_boot_version"
     compile "org.apache.logging.log4j:log4j-slf4j-impl:${log4j_version}"
     compile "org.apache.logging.log4j:log4j-web:${log4j_version}"
     compile "org.slf4j:jul-to-slf4j:$slf4j_version"
+
+    // Corda dependencies
+    cordaCompile "$corda_release_group:corda-jackson:$corda_release_version"
+    cordaCompile "$corda_release_group:corda-rpc:$corda_release_version"
+
+    testCompile "$corda_release_group:corda-node-driver:$corda_release_version"
+
+    // Local CorDapp dependencies.
+    cordapp project(":contracts")
+    cordapp project(":workflows")
 }
 
-springBoot {
-    mainClassName = "com.template.webserver.ServerKt"
+task integrationTest(type: Test, group: "verification", dependsOn: []) {
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
 }
-

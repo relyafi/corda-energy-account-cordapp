@@ -1,15 +1,14 @@
-package net.corda.examples.energyaccount.flows
+package net.corda.examples.energyaccount.clients
 
 import com.natpryce.hamkrest.assertion.assertThat
 import com.natpryce.hamkrest.equalTo
 import net.corda.client.rpc.CordaRPCClient
 import net.corda.core.CordaRuntimeException
-import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowException
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.getOrThrow
-import net.corda.examples.energyaccount.flows.api.AccountClientApi
+import net.corda.examples.energyaccount.clients.api.AccountClientApi
 import net.corda.node.services.Permissions
 import net.corda.testing.driver.DriverParameters
 import net.corda.testing.driver.InProcess
