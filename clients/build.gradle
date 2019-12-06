@@ -1,22 +1,4 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        jcenter()
-    }
-
-    dependencies {
-        classpath "org.springframework.boot:spring-boot-gradle-plugin:$spring_boot_gradle_plugin_version"
-    }
-}
-
-apply plugin: 'net.corda.plugins.quasar-utils'
 apply plugin: 'org.springframework.boot'
-
-bootJar {
-    baseName = "corda-energy-account-webserver"
-    version = "1"
-}
 
 sourceSets {
     main {
@@ -24,11 +6,7 @@ sourceSets {
             srcDir rootProject.file("config/dev")
         }
     }
-    test {
-        resources {
-            srcDir rootProject.file("config/test")
-        }
-    }
+
     integrationTest {
         kotlin {
             compileClasspath += main.output + test.output
@@ -61,14 +39,24 @@ dependencies {
     compile "org.slf4j:jul-to-slf4j:$slf4j_version"
 
     // Corda dependencies
-    cordaCompile "$corda_release_group:corda-jackson:$corda_release_version"
-    cordaCompile "$corda_release_group:corda-rpc:$corda_release_version"
+    compile "$corda_release_group:corda-jackson:$corda_release_version"
+    compile "$corda_release_group:corda-rpc:$corda_release_version"
 
     testCompile "$corda_release_group:corda-node-driver:$corda_release_version"
 
     // Local CorDapp dependencies.
     cordapp project(":contracts")
     cordapp project(":workflows")
+}
+
+springBoot {
+    mainClassName = "net.corda.examples.energyaccount.clients.api.CordaEnergyAccountWebApp"
+}
+
+task runBritishEnergyWebCli(type: JavaExec, dependsOn: assemble) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'net.corda.examples.energyaccount.clients.api.CordaEnergyAccountWebApp'
+    args '--server.port=10050', '--corda.host=localhost:10009', '--corda.user=user1', '--corda.password=test'
 }
 
 task integrationTest(type: Test, group: "verification", dependsOn: []) {

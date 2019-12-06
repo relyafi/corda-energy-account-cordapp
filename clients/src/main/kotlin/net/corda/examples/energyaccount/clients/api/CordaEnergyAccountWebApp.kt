@@ -53,7 +53,6 @@ open class CordaEnergyAccountWebApp {
         return mapper
     }
 
-
     companion object {
         private val log = LoggerFactory.getLogger(this::class.java)
 

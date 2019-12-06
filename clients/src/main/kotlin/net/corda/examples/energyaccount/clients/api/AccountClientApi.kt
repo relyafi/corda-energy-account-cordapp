@@ -1,5 +1,6 @@
 package net.corda.examples.energyaccount.clients.api
 
+import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
 import net.corda.core.messaging.CordaRPCOps
@@ -21,6 +22,8 @@ class AccountClientApi() {
 
     @Autowired
     lateinit var rpc: CordaRPCOps
+
+    private val objectMapper = JacksonSupport.createNonRpcMapper()
 
     fun createAccount(firstName: String, lastName: String) : AccountState {
 
@@ -55,5 +58,15 @@ class AccountClientApi() {
     fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
         val uid = UniqueIdentifier.fromString(id)
         return getAccountByLinearId(uid)
+    }
+
+    @GetMapping(value = "/nodeInfo", produces = arrayOf("text/plain"))
+    fun nodeInfo(): String {
+        return objectMapper.writeValueAsString(rpc.nodeInfo())
+    }
+
+    @GetMapping(value = "/networkMap", produces = arrayOf("text/plain"))
+    fun networkMap(): String {
+        return objectMapper.writeValueAsString(rpc.networkMapSnapshot())
     }
 }
