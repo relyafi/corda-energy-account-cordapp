@@ -1,6 +1,7 @@
 package net.corda.examples.energyaccount.flows
 
 import co.paralleluniverse.fibers.Suspendable
+import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
 import net.corda.core.identity.Party
 import net.corda.core.node.StatesToRecord
@@ -14,12 +15,12 @@ import net.corda.examples.energyaccount.contracts.AccountContract
 @InitiatingFlow
 @StartableByRPC
 // TODO The regulator party should be fixed and not specifiable on the transaction
-class CreateAccountFlowInitiator(
-        private val regulator: Party,
-        private val firstName : String,
-        private val lastName : String) : AccountBaseFlow() {
+class TransferAccountFlowInitiator(
+        private val accountLinearId: UniqueIdentifier,
+        private val newSupplier: Party) : AccountBaseFlow() {
 
     companion object {
+        object RETRIEVING : ProgressTracker.Step("Retrieving current account state.")
         object BUILDING : ProgressTracker.Step("Building and verifying transaction.")
         object SIGNING : ProgressTracker.Step("Signing transaction.")
         object COLLECTING : ProgressTracker.Step("Collecting counterparty signatures.") {
@@ -32,6 +33,7 @@ class CreateAccountFlowInitiator(
     }
 
     override val progressTracker = ProgressTracker(
+            RETRIEVING,
             BUILDING,
             SIGNING,
             COLLECTING,
@@ -40,13 +42,14 @@ class CreateAccountFlowInitiator(
     @Suspendable
     override fun call() : SignedTransaction {
 
+        progressTracker.currentStep = RETRIEVING
+        val account = getAccountByLinearId(accountLinearId)
+
         progressTracker.currentStep = BUILDING
-        val utx = AccountContract.generateAccountCreate(
+        val utx = AccountContract.generateAccountTransfer(
                 notary,
-                regulator,
-                ourIdentity,
-                firstName,
-                lastName)
+                account,
+                newSupplier)
         utx.verify(serviceHub)
 
         progressTracker.currentStep = SIGNING
@@ -54,22 +57,26 @@ class CreateAccountFlowInitiator(
 
         progressTracker.currentStep = COLLECTING
         // Need the regulator to approve this action
-        val regulatorSession = initiateFlow(regulator)
+        val newSupplierSession = initiateFlow(newSupplier)
+        val regulatorSession = initiateFlow(account.state.data.regulator)
+
+        val sessions = listOf(newSupplierSession, regulatorSession)
+
         val fstx = subFlow(CollectSignaturesFlow(
                 pstx,
-                listOf(regulatorSession),
+                sessions,
                 progressTracker = COLLECTING.childProgressTracker()))
 
         progressTracker.currentStep = FINALISING
         return subFlow(FinalityFlow(
                 fstx,
-                listOf(regulatorSession),
+                sessions,
                 FINALISING.childProgressTracker()))
     }
 }
 
-@InitiatedBy(CreateAccountFlowInitiator::class)
-class CreateAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
+@InitiatedBy(TransferAccountFlowInitiator::class)
+class TransferAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
     @Suspendable
     override fun call() : SignedTransaction {
 
@@ -90,6 +97,6 @@ class CreateAccountFlowResponder(val counterpartySession: FlowSession) : Account
                 // TODO: Need to find a way of identifying that we're the regulator without \
                 //       hard-coding an organisation name
                 if (ourIdentity.name.organisation == "Government Regulator")
-                        StatesToRecord.ALL_VISIBLE else StatesToRecord.ONLY_RELEVANT))
+                    StatesToRecord.ALL_VISIBLE else StatesToRecord.ONLY_RELEVANT))
     }
 }

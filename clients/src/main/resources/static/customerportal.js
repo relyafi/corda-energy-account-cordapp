@@ -38,10 +38,12 @@ class NavigationBar extends React.Component {
                 </NavBar.Brand>
                 <NavBar.Text>
                     powered by&nbsp;
-                    <img src='/corda.png'
-                         height="30"
-                         className="d-inline-block align-top"
-                         alt='corda'/>
+                    <a href='https://www.r3.com/'>
+                        <img src='/corda.png'
+                             height="30"
+                             className="d-inline-block align-top"
+                             alt='corda'/>
+                     </a>
                 </NavBar.Text>
             </NavBar>
         )
@@ -254,7 +256,7 @@ class App extends React.Component {
                 lookupState: "OK",
                 accountDetails: accountDetails}))
             .catch((error) => {
-                console.error(error);
+                console.info(error);
                 this.setState({lookupState: "FAIL"})
             });
     }

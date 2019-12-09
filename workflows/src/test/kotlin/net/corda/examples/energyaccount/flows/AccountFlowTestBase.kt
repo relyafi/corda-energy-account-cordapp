@@ -1,9 +1,17 @@
 package net.corda.examples.energyaccount.flows
 
+import junit.framework.TestCase
+import junit.framework.TestCase.assertEquals
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
+import net.corda.core.identity.Party
+import net.corda.core.node.services.Vault
+import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
+import net.corda.examples.energyaccount.contracts.AccountState
+import net.corda.node.services.statemachine.FlowState
 import net.corda.testing.internal.chooseIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -55,10 +63,36 @@ abstract class AccountFlowTestBase {
         return supplierNode.startFlow(flow).getOrThrow()
     }
 
+    protected fun transferAccount(
+            supplierNode: StartedMockNode,
+            accountLinearId: UniqueIdentifier,
+            newSupplier: Party) : SignedTransaction {
+        val flow = TransferAccountFlowInitiator(accountLinearId, newSupplier)
+        return supplierNode.startFlow(flow).getOrThrow()
+    }
+
     protected fun destroyAccount(
             supplierNode: StartedMockNode,
             accountLinearId: UniqueIdentifier) : SignedTransaction {
         val flow = DestroyAccountFlowInitiator(accountLinearId)
         return supplierNode.startFlow(flow).getOrThrow()
+    }
+
+    protected fun verifyNodeHasStates(
+            node: StartedMockNode,
+            num: Int,
+            status: Vault.StateStatus) {
+        val states = node.services.vaultService.queryBy<AccountState>(
+                QueryCriteria.VaultQueryCriteria(status)).states
+        assertEquals(node.info.toString(), num, states.size)
+    }
+
+    protected fun verifyNodeRecordedTxn(
+            node: StartedMockNode,
+            stx: SignedTransaction) {
+        assertEquals(
+                node.info.toString(),
+                stx,
+                node.services.validatedTransactions.getTransaction(stx.id))
     }
 }

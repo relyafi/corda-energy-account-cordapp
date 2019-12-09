@@ -2,7 +2,9 @@ package net.corda.examples.energyaccount.clients.api
 
 import net.corda.client.jackson.JacksonSupport
 import net.corda.core.contracts.UniqueIdentifier
+import net.corda.core.flows.FlowException
 import net.corda.core.identity.CordaX500Name
+import net.corda.core.identity.Party
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
 import net.corda.core.node.services.vault.QueryCriteria
@@ -10,11 +12,9 @@ import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.DestroyAccountFlowInitiator
+import net.corda.examples.energyaccount.flows.TransferAccountFlowInitiator
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api")
@@ -54,18 +54,43 @@ class AccountClientApi() {
         return ( if (results.size == 1) results.single().state.data else null )
     }
 
-    @GetMapping(value=["/getaccount"])
+    fun transferAccount(id: UniqueIdentifier, toSupplier: Party) : AccountState {
+
+        return rpc.startFlow(
+                ::TransferAccountFlowInitiator,
+                id,
+                toSupplier).returnValue.getOrThrow().coreTransaction.outputs.single().data
+                as AccountState
+    }
+
+    @GetMapping(value = ["/getaccount"])
     fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
         val uid = UniqueIdentifier.fromString(id)
         return getAccountByLinearId(uid)
     }
 
-    @GetMapping(value = "/nodeInfo", produces = arrayOf("text/plain"))
+    @PatchMapping(value = ["/transferaccount"])
+    fun transferAccount(@RequestParam id: String, @RequestParam toSupplier: String) : String {
+        val uid = UniqueIdentifier.fromString(id)
+        val x500Name = CordaX500Name.parse(toSupplier)
+        val party = rpc.wellKnownPartyFromX500Name(x500Name) ?:
+                return "Unknown supplier $toSupplier"
+
+        try {
+            transferAccount(uid, party)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return ""
+    }
+
+    @GetMapping(value = ["/nodeInfo"], produces = arrayOf("text/plain"))
     fun nodeInfo(): String {
         return objectMapper.writeValueAsString(rpc.nodeInfo())
     }
 
-    @GetMapping(value = "/networkMap", produces = arrayOf("text/plain"))
+    @GetMapping(value = ["/networkMap"], produces = arrayOf("text/plain"))
     fun networkMap(): String {
         return objectMapper.writeValueAsString(rpc.networkMapSnapshot())
     }

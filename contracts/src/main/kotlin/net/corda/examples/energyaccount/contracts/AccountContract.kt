@@ -10,6 +10,7 @@ class AccountContract : Contract {
 
     interface Commands : CommandData {
         class Create: Commands, TypeOnlyCommandData()
+        class Transfer: Commands, TypeOnlyCommandData()
         class Destroy: Commands, TypeOnlyCommandData()
     }
 
@@ -30,6 +31,19 @@ class AccountContract : Contract {
                             supplier.owningKey)))
         }
 
+        fun generateAccountTransfer(
+                notary: Party,
+                account: StateAndRef<AccountState>,
+                newSupplier: Party) : TransactionBuilder {
+            return TransactionBuilder(notary)
+                    .addInputState(account)
+                    .addOutputState(account.state.data.withNewSupplier(newSupplier))
+                    .addCommand(Command(Commands.Transfer(), listOf(
+                            account.state.data.regulator.owningKey,
+                            account.state.data.supplier.owningKey,
+                            newSupplier.owningKey)))
+        }
+
         fun generateAccountDestroy(
                 notary: Party,
                 account: StateAndRef<AccountState>) : TransactionBuilder {
@@ -47,6 +61,7 @@ class AccountContract : Contract {
 
         when (cmd.value) {
             is Commands.Create -> validateCreate(tx, signers)
+            is Commands.Transfer -> validateTransfer(tx, signers)
             is Commands.Destroy -> validateDestroy(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command")
         }
@@ -69,6 +84,26 @@ class AccountContract : Contract {
         validateMandatoryAccountFields(outState)
 
         requireThat {
+            "All participants have signed the transaction" using
+                    signers.containsAll(keysFromParticipants(outState))
+            "The regulator has signed the transaction" using
+                    signers.contains(outState.regulator.owningKey)
+        }
+    }
+
+    private fun validateTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) {
+
+        requireThat {
+            "A single account must be consumed" using (tx.inputs.size == 1)
+            "A single account must be created" using (tx.outputs.size == 1)
+        }
+
+        val inState = tx.inputsOfType<AccountState>().single()
+        val outState = tx.outputsOfType<AccountState>().single()
+
+        requireThat {
+            "The old and new supplier must differ" using
+                    !inState.supplier.hashCode().equals(outState.supplier.hashCode())
             "All participants have signed the transaction" using
                     signers.containsAll(keysFromParticipants(outState))
             "The regulator has signed the transaction" using

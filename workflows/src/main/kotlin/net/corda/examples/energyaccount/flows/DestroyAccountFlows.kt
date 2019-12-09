@@ -77,6 +77,8 @@ class DestroyAccountFlowResponder(val counterpartySession: FlowSession) : Accoun
 
         val txId = subFlow(signTransactionFlow).id
 
+        // Regulator will implicitly record state consumption, since it will be aware of the
+        // previous state of the account despite not being a participant in the destroy txn
         return subFlow(ReceiveFinalityFlow(counterpartySession, txId))
     }
 }

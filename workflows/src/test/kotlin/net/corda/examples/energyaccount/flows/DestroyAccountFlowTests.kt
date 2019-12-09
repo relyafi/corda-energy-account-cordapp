@@ -1,9 +1,12 @@
 package net.corda.examples.energyaccount.flows
 
+import com.nhaarman.mockito_kotlin.verify
 import junit.framework.TestCase.assertEquals
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowException
+import net.corda.core.node.services.Vault
 import net.corda.core.node.services.queryBy
+import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.examples.energyaccount.contracts.AccountState
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.text.StringContainsInOrder
@@ -83,19 +86,12 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
         assertEquals(1, stx.tx.inputs.size)
         assert(stx.tx.outputs.isEmpty())
 
-        // Validate the transaction is recorded in both parties transaction storage
-        assertEquals(stx, supplierA.services.validatedTransactions.getTransaction(stx.id))
-        assertEquals(stx, regulator.services.validatedTransactions.getTransaction(stx.id))
-
-        // Validate the account no longer exists in both parties vaults
-        regulator.transaction {
-            val accounts = regulator.services.vaultService.queryBy<AccountState>().states
-            assert(accounts.isEmpty())
-        }
-
-        supplierA.transaction {
-            val accounts = supplierA.services.vaultService.queryBy<AccountState>().states
-            assert(accounts.isEmpty())
+        // Validate the transaction is recorded in both parties transaction storage and the account
+        // is consumed
+        listOf(supplierA, regulator).forEach {
+            verifyNodeRecordedTxn(it, stx)
+            verifyNodeHasStates(it, 0, Vault.StateStatus.UNCONSUMED)
+            verifyNodeHasStates(it, 1, Vault.StateStatus.CONSUMED)
         }
     }
 }

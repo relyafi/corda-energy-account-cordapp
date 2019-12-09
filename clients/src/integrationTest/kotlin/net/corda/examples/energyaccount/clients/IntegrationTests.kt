@@ -22,7 +22,7 @@ import org.junit.Test
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
-class TraderDemoTest {
+class IntegrationTests {
 
     private companion object {
         private val log = contextLogger()
@@ -116,6 +116,93 @@ class TraderDemoTest {
                 assertNull(this[0].getAccountByLinearId(accountBId))
                 assertNull(this[1].getAccountByLinearId(accountBId))
                 assertNull(this[2].getAccountByLinearId(accountBId))
+            }
+
+            // Create another new account with supplier A
+            val accountCId = supplierACli.createAccount("Charlie", "Chaplin").linearId
+            val supplierAIdentity = supplierA.nodeInfo.legalIdentities[0]
+            val supplierBIdentity = supplierB.nodeInfo.legalIdentities[0]
+
+            log.info("Created account C with ID $accountBId")
+
+            val (supplierA_C, supplierB_C, regulator_C) =
+                    listOf(supplierACli, supplierBCli, regulatorCli)
+                            .map { it.getAccountByLinearId(accountCId) }
+
+            assertThat(supplierA_C?.firstName, equalTo("Charlie"))
+            assertThat(supplierA_C?.lastName, equalTo("Chaplin"))
+            assertThat(supplierA_C?.supplier, equalTo(supplierAIdentity))
+            assertNull(supplierB_C)
+            assertThat(regulator_C?.firstName, equalTo("Charlie"))
+            assertThat(regulator_C?.lastName, equalTo("Chaplin"))
+            assertThat(regulator_C?.supplier, equalTo(supplierAIdentity))
+
+            // Transfer account to supplier B
+            supplierACli.transferAccount(accountCId, supplierBIdentity)
+
+            // TODO: This is getting a bit out of hand, need to revisit supplier var storage
+            val (supplierA_C_2, supplierB_C_2, regulator_C_2) =
+                    listOf(supplierACli, supplierBCli, regulatorCli)
+                            .map { it.getAccountByLinearId(accountCId) }
+
+            assertNull(supplierA_C_2)
+            assertThat(supplierB_C_2?.firstName, equalTo("Charlie"))
+            assertThat(supplierB_C_2?.lastName, equalTo("Chaplin"))
+            assertThat(supplierB_C_2?.supplier, equalTo(supplierBIdentity))
+            assertThat(regulator_C_2?.firstName, equalTo("Charlie"))
+            assertThat(regulator_C_2?.lastName, equalTo("Chaplin"))
+            assertThat(regulator_C_2?.supplier, equalTo(supplierBIdentity))
+
+            // Attempt transfer from A->B again - expected failure
+            with(assertFailsWith<FlowException> {
+                supplierACli.transferAccount(accountCId, supplierBIdentity) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf("Account with id ", " not found.")))
+            }
+
+            // Attempt transfer from A->A - expected failure
+            with(assertFailsWith<FlowException> {
+                supplierACli.transferAccount(accountCId, supplierAIdentity) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf("Account with id ", " not found.")))
+            }
+
+            // Attempt transfer from B->B - expected failure
+            with(assertFailsWith<FlowException> {
+                supplierBCli.transferAccount(accountCId, supplierBIdentity) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContains(
+                                "Failed requirement: The old and new supplier must differ"))
+            }
+
+            // Attempt transfer back from B->A - expected success
+            supplierBCli.transferAccount(accountCId, supplierAIdentity)
+
+            val (supplierA_C_3, supplierB_C_3, regulator_C_3) =
+                    listOf(supplierACli, supplierBCli, regulatorCli)
+                            .map { it.getAccountByLinearId(accountCId) }
+
+            assertThat(supplierA_C_3?.firstName, equalTo("Charlie"))
+            assertThat(supplierA_C_3?.lastName, equalTo("Chaplin"))
+            assertThat(supplierA_C_3?.supplier, equalTo(supplierAIdentity))
+            assertNull(supplierB_C_3)
+            assertThat(regulator_C_3?.firstName, equalTo("Charlie"))
+            assertThat(regulator_C_3?.lastName, equalTo("Chaplin"))
+            assertThat(regulator_C_3?.supplier, equalTo(supplierAIdentity))
+
+            // Attempt transfer of deleted account - expected failure
+            with(assertFailsWith<FlowException> {
+                supplierBCli.transferAccount(accountBId, supplierAIdentity) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf("Account with id ", " not found.")))
             }
         }
     }
