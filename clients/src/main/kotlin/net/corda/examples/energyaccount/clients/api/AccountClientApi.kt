@@ -25,6 +25,8 @@ class AccountClientApi() {
 
     private val objectMapper = JacksonSupport.createNonRpcMapper()
 
+    data class TransferTxnBody(val accountId: String, val toSupplier: String)
+
     fun createAccount(firstName: String, lastName: String) : AccountState {
 
         // TODO: Remove hard coding of regulator
@@ -70,11 +72,11 @@ class AccountClientApi() {
     }
 
     @PatchMapping(value = ["/transferaccount"])
-    fun transferAccount(@RequestParam id: String, @RequestParam toSupplier: String) : String {
-        val uid = UniqueIdentifier.fromString(id)
-        val x500Name = CordaX500Name.parse(toSupplier)
+    fun transferAccount(@RequestBody body: TransferTxnBody) : String {
+        val uid = UniqueIdentifier.fromString(body.accountId)
+        val x500Name = CordaX500Name.parse(body.toSupplier)
         val party = rpc.wellKnownPartyFromX500Name(x500Name) ?:
-                return "Unknown supplier $toSupplier"
+                return "Unknown supplier $body.toSupplier"
 
         try {
             transferAccount(uid, party)
@@ -82,7 +84,7 @@ class AccountClientApi() {
             return e.message!!
         }
 
-        return ""
+        return "OK"
     }
 
     @GetMapping(value = ["/nodeInfo"], produces = arrayOf("text/plain"))

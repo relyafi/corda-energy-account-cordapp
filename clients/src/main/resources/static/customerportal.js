@@ -8,6 +8,7 @@ let Col = ReactBootstrap.Col;
 let Container = ReactBootstrap.Container;
 let Form = ReactBootstrap.Form;
 let InputGroup = ReactBootstrap.InputGroup;
+let Modal = ReactBootstrap.Modal;
 let NavBar = ReactBootstrap.Navbar;
 let Row = ReactBootstrap.Row;
 let Tab = ReactBootstrap.Tab;
@@ -180,8 +181,9 @@ class AccountTransferPanel extends React.Component {
                                           ref="newSupplier">
                                 {
                                     this.props.otherSuppliers.map((it) =>
-                                        <option>{getIdentityDisplayName(
-                                            it.legalIdentitiesAndCerts[0])}</option>)
+                                        <option label={getIdentityDisplayName(
+                                                it.legalIdentitiesAndCerts[0])}>{
+                                            it.legalIdentitiesAndCerts[0]}</option>)
                                 }
                             </Form.Control>
                             <Button variant="dark"
@@ -194,7 +196,51 @@ class AccountTransferPanel extends React.Component {
     }
 
     handleSubmit(event) {
+        let newSupplier = event.target.elements.newSupplier.value
         event.preventDefault();
+        this.props.onSubmit(this.props.accountId, newSupplier)
+    }
+}
+
+class AccountTransferResultDialog extends React.Component {
+    constructor(props) {
+        super(props);
+        this.handleClose = this.handleClose.bind(this);
+    }
+
+    render() {
+        let modalText =
+            ( this.props.transferResult == "OK"
+              ?
+              "Account transfer was successful. You will now be logged out. " +
+              "Please access your account on your new suppliers website."
+              :
+              "Account transfer failed. Please contact customer services."
+        )
+
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.transferResult != ""}
+                       onHide={this.handleClose}>
+                    <Modal.Header closeButton>
+                        <Modal.Title>Transfer Account</Modal.Title>
+                    </Modal.Header>
+                        <Modal.Body>
+                            {modalText}
+                        </Modal.Body>
+                    <Modal.Footer>
+                        <Button onClick={this.handleClose}>
+                            Close
+                        </Button>
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    handleClose() {
+        event.preventDefault();
+        this.props.onClose();
     }
 }
 
@@ -207,6 +253,7 @@ class App extends React.Component {
             networkMap: {},
             otherSuppliers: [],
             lookupState: "",
+            transferResult: "",
             accountDetails: {}
         };
 
@@ -214,6 +261,8 @@ class App extends React.Component {
         this.getNetworkMap = this.getNetworkMap.bind(this);
         this.getOtherSuppliers = this.getOtherSuppliers.bind(this);
         this.getAccount = this.getAccount.bind(this);
+        this.transferAccount = this.transferAccount.bind(this);
+        this.onTransferAccountClose = this.onTransferAccountClose.bind(this)
     }
 
     componentDidMount() {
@@ -261,10 +310,34 @@ class App extends React.Component {
             });
     }
 
+    transferAccount(accountId, newSupplier) {
+        return fetch('/api/transferaccount', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: accountId,
+                toSupplier: newSupplier
+            })
+        })
+            .then(result => result.text())
+            .then(result => this.setState({transferResult: result}))
+    }
+
+    onTransferAccountClose() {
+        if (this.state.transferResult == "OK") {
+            this.setState({lookupState: ""})
+        }
+
+        this.setState({transferResult: ""})
+    }
+
     render() {
         let account = this.state.accountDetails;
 
-        if ( this.state.lookupState != "OK" ) {
+        if (this.state.lookupState != "OK") {
             return (
                 <div>
                     <NavigationBar nodeInfo={this.state.nodeInfo}/>
@@ -283,7 +356,11 @@ class App extends React.Component {
                                                     lastName={account.lastName}/>
                         </Tab>
                         <Tab eventKey="transfer" title="Transfer Account">
-                            <AccountTransferPanel otherSuppliers={this.state.otherSuppliers}/>
+                            <AccountTransferPanel accountId={account.linearId.id}
+                                                  otherSuppliers={this.state.otherSuppliers}
+                                                  onSubmit={this.transferAccount}/>
+                            <AccountTransferResultDialog transferResult={this.state.transferResult}
+                                                         onClose={this.onTransferAccountClose} />
                         </Tab>
                     </Tabs>
                 </div>
