@@ -1,6 +1,5 @@
 package net.corda.examples.energyaccount.flows
 
-import junit.framework.TestCase
 import junit.framework.TestCase.assertEquals
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.CordaX500Name
@@ -11,7 +10,6 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
-import net.corda.node.services.statemachine.FlowState
 import net.corda.testing.internal.chooseIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -71,10 +69,10 @@ abstract class AccountFlowTestBase {
         return supplierNode.startFlow(flow).getOrThrow()
     }
 
-    protected fun destroyAccount(
+    protected fun deleteAccount(
             supplierNode: StartedMockNode,
             accountLinearId: UniqueIdentifier) : SignedTransaction {
-        val flow = DestroyAccountFlowInitiator(accountLinearId)
+        val flow = DeleteAccountFlowInitiator(accountLinearId)
         return supplierNode.startFlow(flow).getOrThrow()
     }
 

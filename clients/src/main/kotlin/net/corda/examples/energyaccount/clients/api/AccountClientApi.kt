@@ -11,7 +11,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
-import net.corda.examples.energyaccount.flows.DestroyAccountFlowInitiator
+import net.corda.examples.energyaccount.flows.DeleteAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.TransferAccountFlowInitiator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
@@ -25,7 +25,9 @@ class AccountClientApi() {
 
     private val objectMapper = JacksonSupport.createNonRpcMapper()
 
+    data class CreateTxnBody(val firstName: String, val lastName: String)
     data class TransferTxnBody(val accountId: String, val toSupplier: String)
+    data class DeleteTxnBody(val accountId: String)
 
     fun createAccount(firstName: String, lastName: String) : AccountState {
 
@@ -42,9 +44,9 @@ class AccountClientApi() {
                 as AccountState
     }
 
-    fun destroyAccount(accountLinearId: UniqueIdentifier) {
+    fun deleteAccount(accountLinearId: UniqueIdentifier) {
 
-       rpc.startFlow(::DestroyAccountFlowInitiator, accountLinearId).returnValue.getOrThrow()
+       rpc.startFlow(::DeleteAccountFlowInitiator, accountLinearId).returnValue.getOrThrow()
     }
 
     fun getAccountByLinearId(id: UniqueIdentifier) : AccountState? {
@@ -56,6 +58,21 @@ class AccountClientApi() {
         return ( if (results.size == 1) results.single().state.data else null )
     }
 
+    @GetMapping(value = ["/getAccount"])
+    fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
+        val uid = UniqueIdentifier.fromString(id)
+        return getAccountByLinearId(uid)
+    }
+
+    @GetMapping(value = ["/getAllAccounts"])
+    fun getAllAccounts() : List<AccountState> {
+        val results = rpc.vaultQueryByCriteria(
+                QueryCriteria.LinearStateQueryCriteria(),
+                AccountState::class.java).states
+
+        return results.map { it.state.data }
+    }
+
     fun transferAccount(id: UniqueIdentifier, toSupplier: Party) : AccountState {
 
         return rpc.startFlow(
@@ -65,13 +82,19 @@ class AccountClientApi() {
                 as AccountState
     }
 
-    @GetMapping(value = ["/getaccount"])
-    fun getAccountByLinearId(@RequestParam id: String) : AccountState? {
-        val uid = UniqueIdentifier.fromString(id)
-        return getAccountByLinearId(uid)
+    @PostMapping(value = ["/createAccount"])
+    fun createAccount(@RequestBody body: CreateTxnBody) : String {
+
+        try {
+            createAccount(body.firstName, body.lastName)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
     }
 
-    @PatchMapping(value = ["/transferaccount"])
+    @PatchMapping(value = ["/transferAccount"])
     fun transferAccount(@RequestBody body: TransferTxnBody) : String {
         val uid = UniqueIdentifier.fromString(body.accountId)
         val x500Name = CordaX500Name.parse(body.toSupplier)
@@ -80,6 +103,19 @@ class AccountClientApi() {
 
         try {
             transferAccount(uid, party)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
+    }
+
+    @DeleteMapping(value = ["/deleteAccount"])
+    fun deleteAccount(@RequestBody body: DeleteTxnBody) : String {
+        val uid = UniqueIdentifier.fromString(body.accountId)
+
+        try {
+            deleteAccount(uid)
         } catch (e : FlowException) {
             return e.message!!
         }

@@ -42,7 +42,7 @@ class NavigationBar extends React.Component {
                     <a href='https://www.r3.com/'>
                         <img src='/corda.png'
                              height="30"
-                             className="d-inline-block align-top"
+                             className="d-inline-block mb-1"
                              alt='corda'/>
                      </a>
                 </NavBar.Text>
@@ -220,9 +220,8 @@ class AccountTransferResultDialog extends React.Component {
 
         return (
             <div class="panel panel-default">
-                <Modal show={this.props.transferResult != ""}
-                       onHide={this.handleClose}>
-                    <Modal.Header closeButton>
+                <Modal show={this.props.transferResult != ""}>
+                    <Modal.Header>
                         <Modal.Title>Transfer Account</Modal.Title>
                     </Modal.Header>
                         <Modal.Body>
@@ -298,7 +297,7 @@ class App extends React.Component {
     }
 
     getAccount(accountId) {
-        var request = '/api/getaccount?id=' + accountId
+        var request = '/api/getAccount?id=' + accountId
         return fetch(request)
             .then(result => result.json())
             .then(accountDetails => this.setState({
@@ -311,7 +310,7 @@ class App extends React.Component {
     }
 
     transferAccount(accountId, newSupplier) {
-        return fetch('/api/transferaccount', {
+        return fetch('/api/transferAccount', {
             method: 'PATCH',
             headers: {
                 'Accept': 'application/json',

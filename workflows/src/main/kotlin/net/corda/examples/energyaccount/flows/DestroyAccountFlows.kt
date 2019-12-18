@@ -12,7 +12,7 @@ import net.corda.examples.energyaccount.contracts.AccountContract
 // *********ac
 @InitiatingFlow
 @StartableByRPC
-class DestroyAccountFlowInitiator(
+class DeleteAccountFlowInitiator(
         private val accountLinearId: UniqueIdentifier) : AccountBaseFlow() {
 
     companion object {
@@ -42,7 +42,7 @@ class DestroyAccountFlowInitiator(
         val account = getAccountByLinearId(accountLinearId)
 
         progressTracker.currentStep = BUILDING
-        val utx = AccountContract.generateAccountDestroy(notary, account)
+        val utx = AccountContract.generateAccountDelete(notary, account)
         utx.verify(serviceHub)
 
         progressTracker.currentStep = SIGNING
@@ -64,8 +64,8 @@ class DestroyAccountFlowInitiator(
     }
 }
 
-@InitiatedBy(DestroyAccountFlowInitiator::class)
-class DestroyAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
+@InitiatedBy(DeleteAccountFlowInitiator::class)
+class DeleteAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
     @Suspendable
     override fun call() : SignedTransaction {
 
@@ -78,7 +78,7 @@ class DestroyAccountFlowResponder(val counterpartySession: FlowSession) : Accoun
         val txId = subFlow(signTransactionFlow).id
 
         // Regulator will implicitly record state consumption, since it will be aware of the
-        // previous state of the account despite not being a participant in the destroy txn
+        // previous state of the account despite not being a participant in the delete txn
         return subFlow(ReceiveFinalityFlow(counterpartySession, txId))
     }
 }

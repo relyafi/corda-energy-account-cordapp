@@ -112,7 +112,9 @@ compileTestKotlin {
     }
 }
 
-task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
+task deployNodes(type: net.corda.plugins.Cordform,
+                 group: "deployment",
+                 dependsOn: ['jar']) {
     nodeDefaults {
         projectCordapp {
             deploy = false

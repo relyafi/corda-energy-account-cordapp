@@ -91,7 +91,7 @@ class IntegrationTests {
 
             // Attempt to delete account B as regulator and supplier A - expected failure
             with(assertFailsWith<FlowException> {
-                supplierACli.destroyAccount(accountBId) }) {
+                supplierACli.deleteAccount(accountBId) }) {
 
                 MatcherAssert.assertThat(
                         this.message,
@@ -99,7 +99,7 @@ class IntegrationTests {
             }
 
             with(assertFailsWith<CordaRuntimeException> {
-                regulatorCli.destroyAccount(accountBId) }) {
+                regulatorCli.deleteAccount(accountBId) }) {
 
                 MatcherAssert.assertThat(
                         this.message,
@@ -109,7 +109,7 @@ class IntegrationTests {
             }
 
             // Delete account B as supplier B (owner)
-            supplierBCli.destroyAccount(accountBId)
+            supplierBCli.deleteAccount(accountBId)
 
             // Confirm this can no longer be retrieved
             with (listOf(supplierACli, supplierBCli, regulatorCli)) {

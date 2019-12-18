@@ -1,12 +1,9 @@
 package net.corda.examples.energyaccount.flows
 
-import com.nhaarman.mockito_kotlin.verify
 import junit.framework.TestCase.assertEquals
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowException
 import net.corda.core.node.services.Vault
-import net.corda.core.node.services.queryBy
-import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.examples.energyaccount.contracts.AccountState
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.text.StringContainsInOrder
@@ -15,7 +12,7 @@ import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertFailsWith
 
-class DestroyAccountFlowTests : AccountFlowTestBase() {
+class DeleteAccountFlowTests : AccountFlowTestBase() {
 
     lateinit var existingAccountLinearId: UniqueIdentifier
 
@@ -37,7 +34,7 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
     fun `Flow rejects account deletion for invalid account id`() {
 
         val ex = assertFailsWith<FlowException> {
-            destroyAccount(supplierA, UniqueIdentifier("Invalid id"))
+            deleteAccount(supplierA, UniqueIdentifier("Invalid id"))
         }
 
         assertThat(ex.message, StringContainsInOrder(listOf("Account with id ", " not found.")))
@@ -47,7 +44,7 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
     fun `Flow rejects account deletion for a previously deleted account`() {
 
         // Setup: Delete the account
-        val stx = destroyAccount(supplierA, existingAccountLinearId)
+        val stx = deleteAccount(supplierA, existingAccountLinearId)
 
         network.waitQuiescent()
 
@@ -57,7 +54,7 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
 
         // Attempt to delete again
         val ex = assertFailsWith<FlowException> {
-            destroyAccount(supplierA, existingAccountLinearId)
+            deleteAccount(supplierA, existingAccountLinearId)
         }
 
         assertThat(ex.message, StringContainsInOrder(listOf("Account with id ", " not found.")))
@@ -67,7 +64,7 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
     fun `Flow rejects account deletion for an account owned by another supplier`() {
 
         val ex = assertFailsWith<FlowException> {
-            destroyAccount(supplierB, existingAccountLinearId)
+            deleteAccount(supplierB, existingAccountLinearId)
         }
 
         assertThat(ex.message, StringContainsInOrder(listOf("Account with id ", " not found.")))
@@ -75,7 +72,7 @@ class DestroyAccountFlowTests : AccountFlowTestBase() {
 
     @Test
     fun `Flow successfully deletes a valid existing account`() {
-        val stx = destroyAccount(supplierA, existingAccountLinearId)
+        val stx = deleteAccount(supplierA, existingAccountLinearId)
 
         network.waitQuiescent()
 

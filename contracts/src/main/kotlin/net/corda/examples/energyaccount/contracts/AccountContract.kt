@@ -11,7 +11,7 @@ class AccountContract : Contract {
     interface Commands : CommandData {
         class Create: Commands, TypeOnlyCommandData()
         class Transfer: Commands, TypeOnlyCommandData()
-        class Destroy: Commands, TypeOnlyCommandData()
+        class Delete: Commands, TypeOnlyCommandData()
     }
 
     companion object {
@@ -44,12 +44,12 @@ class AccountContract : Contract {
                             newSupplier.owningKey)))
         }
 
-        fun generateAccountDestroy(
+        fun generateAccountDelete(
                 notary: Party,
                 account: StateAndRef<AccountState>) : TransactionBuilder {
             return TransactionBuilder(notary)
                     .addInputState(account)
-                    .addCommand(Command(Commands.Destroy(), listOf(
+                    .addCommand(Command(Commands.Delete(), listOf(
                             account.state.data.regulator.owningKey,
                             account.state.data.supplier.owningKey)))
         }
@@ -62,7 +62,7 @@ class AccountContract : Contract {
         when (cmd.value) {
             is Commands.Create -> validateCreate(tx, signers)
             is Commands.Transfer -> validateTransfer(tx, signers)
-            is Commands.Destroy -> validateDestroy(tx, signers)
+            is Commands.Delete -> validateDelete(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command")
         }
     }
@@ -111,7 +111,7 @@ class AccountContract : Contract {
         }
     }
 
-    private fun validateDestroy(tx: LedgerTransaction, signers: Set<PublicKey>) {
+    private fun validateDelete(tx: LedgerTransaction, signers: Set<PublicKey>) {
 
         requireThat {
             "No outputs should be created" using tx.outputs.isEmpty()
