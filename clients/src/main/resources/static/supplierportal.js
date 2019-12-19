@@ -359,7 +359,6 @@ class App extends React.Component {
                     this.setState({actionResult: "FAIL"})
                 }
             })
-            .then(() => this.getAccounts())
     }
 
     deleteAccount() {
@@ -382,12 +381,12 @@ class App extends React.Component {
                     this.setState({actionResult: "FAIL"})
                 }
             })
-            .then(() => this.getAccounts())
     }
 
     finishAction() {
         this.setState({currentAction: "",
                        actionResult: ""})
+        this.getAccounts()
     }
 
     render() {
