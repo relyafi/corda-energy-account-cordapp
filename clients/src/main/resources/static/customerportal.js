@@ -187,6 +187,7 @@ class AccountTransferPanel extends React.Component {
                                 }
                             </Form.Control>
                             <Button variant="dark"
+                                    disabled={this.props.transferResult == "PENDING"}
                                     type='submit'>Change Supplier</Button>
                         </Form.Row>
                     </Form>
@@ -220,7 +221,8 @@ class AccountTransferResultDialog extends React.Component {
 
         return (
             <div class="panel panel-default">
-                <Modal show={this.props.transferResult != ""}>
+                <Modal show={this.props.transferResult != "" &&
+                             this.props.transferResult != "PENDING"}>
                     <Modal.Header>
                         <Modal.Title>Transfer Account</Modal.Title>
                     </Modal.Header>
@@ -310,6 +312,7 @@ class App extends React.Component {
     }
 
     transferAccount(accountId, newSupplier) {
+        this.setState({transferResult: "PENDING"})
         return fetch('/api/transferAccount', {
             method: 'PATCH',
             headers: {
@@ -357,6 +360,7 @@ class App extends React.Component {
                         <Tab eventKey="transfer" title="Transfer Account">
                             <AccountTransferPanel accountId={account.linearId.id}
                                                   otherSuppliers={this.state.otherSuppliers}
+                                                  transferResult={this.state.transferResult}
                                                   onSubmit={this.transferAccount}/>
                             <AccountTransferResultDialog transferResult={this.state.transferResult}
                                                          onClose={this.onTransferAccountClose} />

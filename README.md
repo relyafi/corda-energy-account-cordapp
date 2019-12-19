@@ -10,7 +10,13 @@ Run the <code>.bat</code> versions on Windows, and the scripts without an extens
 <li>Clone this repo</li>
 <li>Run <code>gradlew clean deployNodes</code></li>
 <li>Go to <code>build/nodes</code> and execute<code>runnodes</code>.
-    This will bring up your Corda nodes.</li>
+    This will bring up your Corda nodes.<b>Make sure your nodes have successfully
+    started before continuing.</b> You can verify this by looking for the following
+    in the console:<br/>
+    <code>Node for ... started up and registered in ... sec</code><br/>
+    If this doesn't happen, yoy may need to hit enter to get the shell to
+    move on, as it can sometimes get stuck. You should have 4 nodes running in
+    total; 2 suppliers, the government regulator, and the notary.</li>
 <li>Run <code>gradlew runBritishEnergyWebCli</code> and
     <code>gradlew runUKPowerWebCli</code> which will start your webservers.
     Note these run synchronously, so you will need to terminate the gradle tasks
