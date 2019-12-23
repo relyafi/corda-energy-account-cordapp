@@ -51,6 +51,7 @@ class DeleteAccountFlowInitiator(
         progressTracker.currentStep = COLLECTING
         // Need the regulator to approve this action
         val regulatorSession = initiateFlow(account.state.data.regulator)
+
         val fstx = subFlow(CollectSignaturesFlow(
                 pstx,
                 listOf(regulatorSession),

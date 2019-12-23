@@ -1,24 +1,30 @@
 buildscript {
-    ext.kotlin_version = '1.3.61'
     ext {
-        corda_release_group = 'net.corda'
-        corda_release_version = '4.1'
-        corda_gradle_plugins_version = '4.0.45'
-        kotlin_version = '1.2.71'
-        junit_version = '4.12'
-        quasar_version = '0.7.10'
-        spring_boot_version = '2.0.2.RELEASE'
-        spring_boot_gradle_plugin_version = '2.0.2.RELEASE'
-        slf4j_version = '1.7.25'
-        log4j_version = '2.11.2'
-        corda_platform_version = '4'.toInteger()
+        Properties constants = new Properties()
+        file("$projectDir/./constants.properties").withInputStream { constants.load(it) }
+
+        corda_release_group = constants.getProperty("cordaReleaseGroup")
+        corda_release_version = constants.getProperty("cordaVersion")
+        corda_platform_version = constants.getProperty("cordaPlatformVersion").toInteger()
+        corda_gradle_plugins_version = constants.getProperty("cordaGradlePluginsVersion")
+        jvm_target = constants.getProperty("jvmTargetVersion")
+        junit_version = constants.getProperty("junitVersion")
+        kotlin_version = constants.getProperty("kotlinVersion")
+        kotlin_lang_version = constants.getProperty("kotlinLangVersion")
+        kotlin_api_version = constants.getProperty("kotlinAPIVersion")
+        quasar_version = constants.getProperty("quasarVersion")
+        slf4j_version = constants.getProperty("slf4jVersion")
+        log4j_version = constants.getProperty("log4jVersion")
+        spring_boot_version = constants.getProperty("springBootVersion")
+        spring_boot_gradle_plugin_version = constants.getProperty("springBootGradlePluginVersion")
     }
 
     repositories {
         mavenLocal()
         mavenCentral()
         jcenter()
-        maven { url 'https://software.r3.com/artifactory/corda' }    
+        maven { url 'https://software.r3.com/artifactory/corda' }
+        maven { url 'https://repo.gradle.org/gradle/libs-releases' }
     }
 
     dependencies {
@@ -27,23 +33,15 @@ buildscript {
         classpath "net.corda.plugins:cordformation:$corda_gradle_plugins_version"
         classpath "net.corda.plugins:quasar-utils:$corda_gradle_plugins_version"
         classpath "org.springframework.boot:spring-boot-gradle-plugin:$spring_boot_gradle_plugin_version"
-
     }
 }
 
 allprojects {
+    apply from: "${rootProject.projectDir}/repositories.gradle"
     apply plugin: 'kotlin'
     apply plugin: 'net.corda.plugins.cordapp'
     apply plugin: 'net.corda.plugins.cordformation'
     apply plugin: 'net.corda.plugins.quasar-utils'
-
-    repositories {
-        mavenLocal()
-        mavenCentral()
-        jcenter()
-        maven { url 'https://software.r3.com/artifactory/corda' }
-        maven { url 'https://jitpack.io' }
-    }
 
     dependencies {
         compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -54,9 +52,9 @@ allprojects {
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile) {
         kotlinOptions {
-            languageVersion = "1.2"
-            apiVersion = "1.2"
-            jvmTarget = "1.8"
+            languageVersion = "$kotlin_lang_version"
+            apiVersion = "$kotlin_api_version"
+            jvmTarget = "$jvm_target"
             javaParameters = true   // Useful for reflection.
         }
     }
@@ -103,18 +101,16 @@ cordapp {
 
 compileKotlin {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "$jvm_target"
     }
 }
 compileTestKotlin {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "$jvm_target"
     }
 }
 
-task deployNodes(type: net.corda.plugins.Cordform,
-                 group: "deployment",
-                 dependsOn: ['jar']) {
+def nodeConfig = {
     nodeDefaults {
         projectCordapp {
             deploy = false
@@ -125,38 +121,65 @@ task deployNodes(type: net.corda.plugins.Cordform,
     node {
         name "O=Notary,L=London,C=GB"
         notary = [validating : false]
-        p2pPort 10002
+        p2pPort 10100
         rpcSettings {
-            address("localhost:10003")
-            adminAddress("localhost:10043")
+            address("localhost:10111")
+            adminAddress("localhost:10112")
         }
+        sshdPort 10113
     }
     node {
         name "O=Government Regulator,L=London,C=GB"
-        p2pPort 10005
+        p2pPort 10120
         rpcSettings {
-            address("localhost:10006")
-            adminAddress("localhost:10046")
+            address("localhost:10121")
+            adminAddress("localhost:10122")
         }
+        sshdPort 10123
     }
     node {
         name "O=British Energy,L=Manchester,C=GB"
-        p2pPort 10008
+        p2pPort 10130
         rpcSettings {
-            address("localhost:10009")
-            adminAddress("localhost:10049")
+            address("localhost:10131")
+            adminAddress("localhost:10132")
         }
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+        sshdPort 10133
     }
     node {
         name "O=UK Power,L=Newcastle,C=GB"
-        p2pPort 10011
+        p2pPort 10140
         rpcSettings {
-            address("localhost:10012")
-            adminAddress("localhost:10052")
+            address("localhost:10141")
+            adminAddress("localhost:10142")
         }
         rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+        sshdPort 10143
     }
+}
+
+task prepareLocalNodes(type: net.corda.plugins.Cordform,
+                       group: "deployment",
+                       dependsOn: ['jar']) {
+    configure nodeConfig
+}
+
+task prepareDockerNodes(type: net.corda.plugins.Dockerform,
+                        group: "deployment",
+                        dependsOn: ['jar']) {
+
+    def nodesFolder = new File("build/nodes")
+
+    if ( !nodesFolder.exists() ) {
+        nodesFolder.mkdirs()
+    }
+
+    def dockerComposeFile = new File("build/nodes/docker-compose.yml")
+    dockerComposeFile.delete()
+    dockerComposeFile.createNewFile()
+
+    configure nodeConfig
 }
 
 task installQuasar(type: Copy) {

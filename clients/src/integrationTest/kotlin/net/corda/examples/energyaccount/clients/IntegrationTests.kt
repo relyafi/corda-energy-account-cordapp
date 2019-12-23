@@ -16,7 +16,6 @@ import net.corda.testing.driver.driver
 import net.corda.testing.node.TestCordapp
 import net.corda.testing.node.User
 import org.hamcrest.MatcherAssert
-import org.hamcrest.core.StringContains
 import org.hamcrest.text.StringContainsInOrder
 import org.junit.Test
 import kotlin.test.assertFailsWith
@@ -103,9 +102,8 @@ class IntegrationTests {
 
                 MatcherAssert.assertThat(
                         this.message,
-                        StringContains(
-                                "The Initiator of CollectSignaturesFlow must pass " +
-                                "in exactly the sessions required to sign the transaction."))
+                        StringContainsInOrder(listOf(
+                                "No session available to request signature for key")))
             }
 
             // Delete account B as supplier B (owner)
@@ -177,8 +175,8 @@ class IntegrationTests {
 
                 MatcherAssert.assertThat(
                         this.message,
-                        StringContains(
-                                "Failed requirement: The old and new supplier must differ"))
+                        StringContainsInOrder(listOf(
+                                "Failed requirement: The old and new supplier must differ")))
             }
 
             // Attempt transfer back from B->A - expected success

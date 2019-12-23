@@ -8,7 +8,7 @@ Run the <code>.bat</code> versions on Windows, and the scripts without an extens
 <br /><br />
 <ol>
 <li>Clone this repo</li>
-<li>Run <code>gradlew clean deployNodes</code></li>
+<li>Run <code>gradlew clean prepareLocalNodes</code></li>
 <li>Go to <code>build/nodes</code> and execute<code>runnodes</code>.
     This will bring up your Corda nodes.<b>Make sure your nodes have successfully
     started before continuing.</b> You can verify this by looking for the following
