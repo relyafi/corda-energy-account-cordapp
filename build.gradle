@@ -135,6 +135,7 @@ def nodeConfig = {
             address("localhost:10121")
             adminAddress("localhost:10122")
         }
+        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
         sshdPort 10123
     }
     node {

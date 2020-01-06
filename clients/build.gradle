@@ -53,6 +53,12 @@ springBoot {
     mainClassName = "net.corda.examples.energyaccount.clients.api.CordaEnergyAccountWebApp"
 }
 
+task runGovtRegulatorCli(type: JavaExec, group: "deployment", dependsOn: assemble) {
+    classpath = sourceSets.main.runtimeClasspath
+    main = 'net.corda.examples.energyaccount.clients.api.CordaEnergyAccountWebApp'
+    args '--server.port=10052', '--corda.host=localhost:10121', '--corda.user=user1', '--corda.password=test'
+}
+
 task runBritishEnergyWebCli(type: JavaExec, group: "deployment", dependsOn: assemble) {
     classpath = sourceSets.main.runtimeClasspath
     main = 'net.corda.examples.energyaccount.clients.api.CordaEnergyAccountWebApp'

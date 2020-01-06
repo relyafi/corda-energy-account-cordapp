@@ -73,7 +73,8 @@ class AccountList extends React.Component {
                     </ListGroup.Item>
                     { this.props.accounts.map(
                         account =>
-                            <ListGroup.Item xs="auto"
+                            <ListGroup.Item action
+                                            xs="auto"
                                             key={account.linearId.id}
                                             active={account.linearId.id ==
                                                 this.props.activeAccountId}
