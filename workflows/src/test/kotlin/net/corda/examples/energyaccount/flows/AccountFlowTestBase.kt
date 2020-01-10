@@ -10,6 +10,7 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
+import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.testing.internal.chooseIdentity
 import net.corda.testing.node.MockNetwork
 import net.corda.testing.node.MockNetworkParameters
@@ -17,6 +18,7 @@ import net.corda.testing.node.StartedMockNode
 import net.corda.testing.node.TestCordapp
 import org.junit.After
 import org.junit.Before
+import java.time.LocalDate
 
 abstract class AccountFlowTestBase {
 
@@ -50,14 +52,12 @@ abstract class AccountFlowTestBase {
         network.stopNodes()
     }
 
-    protected fun createAcount(
+    protected fun createAccount(
             supplierNode: StartedMockNode,
-            firstName: String,
-            lastName: String) : SignedTransaction {
+            customerDetails: CustomerDetails) : SignedTransaction {
         val flow = CreateAccountFlowInitiator(
                 regulator.info.chooseIdentity(),
-                firstName,
-                lastName)
+                customerDetails)
         return supplierNode.startFlow(flow).getOrThrow()
     }
 
@@ -93,4 +93,11 @@ abstract class AccountFlowTestBase {
                 stx,
                 node.services.validatedTransactions.getTransaction(stx.id))
     }
+
+    protected val defaultCustomerDetails =
+            CustomerDetails(
+                    "John",
+                    "Smith",
+                    LocalDate.parse("1980-01-01"),
+                    "1, London Wall")
 }

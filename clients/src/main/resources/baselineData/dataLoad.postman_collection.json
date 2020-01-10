@@ -1,0 +1,55 @@
+{
+	"info": {
+		"_postman_id": "a09ad76d-d086-4e29-9410-ac33bba112e9",
+		"name": "Energy Account CorDapp Data Load",
+		"description": "Loads a baseline set of data for testing the Energy Account CorDapp",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create account",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"customerDetails\":\n\t{\n\t    \"firstName\": \"{{firstName}}\",\n\t    \"lastName\": \"{{lastName}}\",\n\t    \"dateOfBirth\": \"{{dateOfBirth}}\",\n\t    \"address\": \"{{address}}\",\n\t    \"phoneNumber\": \"{{phoneNumber}}\",\n\t    \"email\": \"{{email}}\"\n\t}\n}"
+				},
+				"url": {
+					"raw": "http://{{host}}/api/createAccount",
+					"protocol": "http",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"createAccount"
+					]
+				},
+				"description": "Creates Accounts defined in a specified data file"
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"id": "9a3f4535-e8bb-4ab8-a3ad-0ea2f581e55b",
+			"key": "FIRST_NAME",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"id": "d3814bb6-8a02-4e4d-8e11-5caa9a168438",
+			"key": "LAST_NAME",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"protocolProfileBehavior": {}
+}

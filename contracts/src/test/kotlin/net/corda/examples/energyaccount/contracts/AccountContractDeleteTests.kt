@@ -21,7 +21,11 @@ class AccountContractDeleteTests : AccountContractTestBase() {
             command(defaultSigners, AccountContract.Commands.Delete())
             `fails with` ("A transaction must contain at least one input or output state")
             input(AccountContract.ID, defaultState)
-            input(AccountContract.ID, defaultState.withNewName("Alice", "Anderson"))
+            input(AccountContract.ID,
+                  defaultState.copy(
+                          customerDetails = defaultState.customerDetails.copy(
+                                  firstName = "Alice",
+                                  lastName = "Anderson")))
             `fails with` ("A single account must be consumed")
         }
     }
@@ -29,7 +33,7 @@ class AccountContractDeleteTests : AccountContractTestBase() {
     @Test
     fun `The supplier has not signed the transaction`() {
         ledgerServices.transaction() {
-            input(AccountContract.ID, defaultState.withNewSupplier(ukPower.party))
+            input(AccountContract.ID, defaultState.copy(supplier = ukPower.party))
             command(defaultSigners, AccountContract.Commands.Delete())
             `fails with` ("All participants have signed the transaction")
         }

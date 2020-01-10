@@ -4,6 +4,7 @@ import net.corda.core.contracts.hash
 import net.corda.core.flows.FlowException
 import net.corda.core.node.services.queryBy
 import net.corda.examples.energyaccount.contracts.AccountState
+import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.testing.core.singleIdentity
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.containsString
@@ -17,7 +18,8 @@ class CreateAccountFlowTests : AccountFlowTestBase() {
     fun `Flow rejects account creation that fails contract validation`() {
 
         val ex = assertFailsWith<FlowException> {
-            createAcount(supplierA, "", "Anderson")
+            createAccount(supplierA,
+                          defaultCustomerDetails.copy(firstName = ""))
         }
 
         assertThat(ex.message, containsString("Failed requirement: Name is populated"))
@@ -25,7 +27,7 @@ class CreateAccountFlowTests : AccountFlowTestBase() {
 
     @Test
     fun `Flow successfully creates a valid new account`() {
-        val stx = createAcount(supplierA, "Alice", "Anderson")
+        val stx = createAccount(supplierA, defaultCustomerDetails)
 
         network.waitQuiescent()
 
@@ -40,8 +42,8 @@ class CreateAccountFlowTests : AccountFlowTestBase() {
         val outState = stx.tx.outputs[0].data as AccountState
 
         assertEquals(supplierA.info.singleIdentity(), outState.supplier)
-        assertEquals("Alice", outState.firstName)
-        assertEquals("Anderson", outState.lastName)
+        assertEquals("John", outState.customerDetails.firstName)
+        assertEquals("Smith", outState.customerDetails.lastName)
 
         // Validate the transaction is recorded in both parties transaction storage
         assertEquals(stx, supplierA.services.validatedTransactions.getTransaction(stx.id))

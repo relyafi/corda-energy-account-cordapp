@@ -5,6 +5,7 @@ import net.corda.core.identity.Party
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import java.security.PublicKey
+import java.util.*
 
 class AccountContract : Contract {
 
@@ -21,11 +22,12 @@ class AccountContract : Contract {
                 notary: Party,
                 regulator: Party,
                 supplier: Party,
-                firstName: String,
-                lastName: String) : TransactionBuilder {
+                customerDetails: CustomerDetails) : TransactionBuilder {
+
+            val newAccount = AccountState(regulator, supplier, customerDetails)
 
             return TransactionBuilder(notary)
-                    .addOutputState(AccountState(regulator, supplier, firstName, lastName))
+                    .addOutputState(newAccount)
                     .addCommand(Command(Commands.Create(), listOf(
                             regulator.owningKey,
                             supplier.owningKey)))
@@ -37,7 +39,7 @@ class AccountContract : Contract {
                 newSupplier: Party) : TransactionBuilder {
             return TransactionBuilder(notary)
                     .addInputState(account)
-                    .addOutputState(account.state.data.withNewSupplier(newSupplier))
+                    .addOutputState(account.state.data.copy(supplier = newSupplier))
                     .addCommand(Command(Commands.Transfer(), listOf(
                             account.state.data.regulator.owningKey,
                             account.state.data.supplier.owningKey,
@@ -127,6 +129,7 @@ class AccountContract : Contract {
     }
 
     private fun validateMandatoryAccountFields(account: AccountState) = requireThat {
-        "Name is populated" using (account.firstName.isNotEmpty() && account.lastName.isNotEmpty())
+        "Name is populated" using (account.customerDetails.firstName.isNotEmpty() &&
+                                   account.customerDetails.lastName.isNotEmpty())
     }
 }

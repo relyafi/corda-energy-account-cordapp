@@ -1,25 +1,3 @@
-"use strict";
-
-let Alert = ReactBootstrap.Alert;
-let Accordion = ReactBootstrap.Accordion;
-let Button = ReactBootstrap.Button;
-let ButtonGroup = ReactBootstrap.ButtonGroup;
-let Card = ReactBootstrap.Card;
-let Col = ReactBootstrap.Col;
-let Container = ReactBootstrap.Container;
-let Form = ReactBootstrap.Form;
-let InputGroup = ReactBootstrap.InputGroup;
-let ListGroup = ReactBootstrap.ListGroup;
-let Modal = ReactBootstrap.Modal;
-let NavBar = ReactBootstrap.Navbar;
-let Row = ReactBootstrap.Row;
-let Table = ReactBootstrap.BootstrapTable;
-let Text = ReactBootstrap.Text;
-
-function getIdentityDisplayName(X500Name) {
-    return X500Name.match("(?<=O=).*(?=, L=)")[0]
-}
-
 class NavigationBar extends React.Component {
     constructor(props) {
         super(props);
@@ -66,7 +44,7 @@ class AccountList extends React.Component {
                 <ListGroup className="mb-2 mx-n2">
                     <ListGroup.Item className="bg-light">
                         <Row className="font-weight-bolder my-n1">
-                            <Col className="accountId" xs={5}>Account Id</Col>
+                            <Col className="accountId" xs={4}>Account Id</Col>
                             <Col className="namefield">First Name</Col>
                             <Col className="namefield">Last Name</Col>
                             <Col className="namefield">Supplier</Col>
@@ -82,9 +60,9 @@ class AccountList extends React.Component {
                                             onClick={(id) => this.props.onAccountSelect(
                                                 account.linearId.id)}>
                                 <Row className="my-n1">
-                                    <Col className="accountId" xs={5}>{account.linearId.id}</Col>
-                                    <Col className="namefield">{account.firstName}</Col>
-                                    <Col className="namefield">{account.lastName}</Col>
+                                    <Col className="accountId" xs={4}>{account.linearId.id}</Col>
+                                    <Col className="namefield">{account.customerDetails.firstName}</Col>
+                                    <Col className="namefield">{account.customerDetails.lastName}</Col>
                                     <Col className="supplierfield">
                                             {getIdentityDisplayName(account.supplier)}</Col>
                                 </Row>
@@ -96,6 +74,11 @@ class AccountList extends React.Component {
                 { this.props.accounts.length == 0 &&
                 <p>No accounts exist</p>
                 }
+                <ButtonGroup className="mx-n2">
+                    <Button variant="dark"
+                            disabled={this.props.activeAccountId == ""}
+                            onClick={this.props.onAccountViewRequest}>View Details</Button>
+                </ButtonGroup>
             </Container>
             </div>
         )
@@ -159,11 +142,13 @@ class App extends React.Component {
             accounts: [],
             initialised: false,
             activeAccountId: "",
+            activeAccount: {},
             currentAction: "",
             actionResult: ""};
 
         this.getNodeInfo = this.getNodeInfo.bind(this);
         this.getNetworkMap = this.getNetworkMap.bind(this);
+        this.accountViewRequest = this.accountViewRequest.bind(this);
         this.accountSelect = this.accountSelect.bind(this);
         this.finishAction = this.finishAction.bind(this);
     }
@@ -193,10 +178,22 @@ class App extends React.Component {
                                              accounts: accounts}))
     }
 
-    accountSelect(id) {
-        this.setState({activeAccountId: id})
+    accountViewRequest(event) {
+        this.setState({currentAction: "View"})
     }
 
+    accountSelect(id) {
+        var foundAccount = false;
+        for (let i = 0;
+             i < this.state.accounts.length && !foundAccount;
+             ++i) {
+            if (this.state.accounts[i].linearId.id == id) {
+                foundAccount = true;
+                this.setState({activeAccountId: id,
+                               activeAccount: this.state.accounts[i]})
+            }
+        }
+    }
     finishAction() {
         this.setState({currentAction: "",
                        actionResult: ""})
@@ -210,8 +207,13 @@ class App extends React.Component {
                 {this.state.initialised == true &&
                 <AccountList accounts={this.state.accounts}
                              activeAccountId={this.state.activeAccountId}
-                             onAccountSelect={this.accountSelect} />
+                             onAccountSelect={this.accountSelect}
+                             onAccountViewRequest={this.accountViewRequest} />
+
                 }
+                <AccountViewDialog actionState={this.state.currentAction}
+                                   accountDetails={this.state.activeAccount}
+                                   onClose={this.finishAction}/>
             </div>
         )
     }

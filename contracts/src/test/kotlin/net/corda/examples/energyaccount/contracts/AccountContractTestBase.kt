@@ -4,6 +4,8 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.testing.core.TestIdentity
 import net.corda.testing.node.MockServices
 import net.corda.testing.node.makeTestIdentityService
+import java.time.LocalDate
+import java.util.*
 
 abstract class AccountContractTestBase {
     protected val ledgerServices = MockServices(
@@ -26,11 +28,17 @@ abstract class AccountContractTestBase {
             "UK Power",
             "Newcastle",
             "GB"))
+
+    protected val defaultCustomerDetails =
+            CustomerDetails("John",
+                            "Smith",
+                            LocalDate.parse("1980-01-01"),
+                            "1, London Wall")
+
     protected val defaultState = AccountState(
             regulator.party,
             britishEnergy.party,
-            "John",
-            "Smith")
+            defaultCustomerDetails)
 
     protected val defaultSigners = listOf(regulator.publicKey, britishEnergy.publicKey)
 }

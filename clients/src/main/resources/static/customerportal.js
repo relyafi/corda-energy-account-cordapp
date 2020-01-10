@@ -1,23 +1,3 @@
-"use strict";
-
-let Alert = ReactBootstrap.Alert;
-let Accordion = ReactBootstrap.Accordion;
-let Button = ReactBootstrap.Button;
-let Card = ReactBootstrap.Card;
-let Col = ReactBootstrap.Col;
-let Container = ReactBootstrap.Container;
-let Form = ReactBootstrap.Form;
-let InputGroup = ReactBootstrap.InputGroup;
-let Modal = ReactBootstrap.Modal;
-let NavBar = ReactBootstrap.Navbar;
-let Row = ReactBootstrap.Row;
-let Tab = ReactBootstrap.Tab;
-let Tabs = ReactBootstrap.Tabs;
-
-function getIdentityDisplayName(X500Name) {
-    return X500Name.match("(?<=O=).*(?=, L=)")[0]
-}
-
 class NavigationBar extends React.Component {
     constructor(props) {
         super(props);
@@ -116,7 +96,7 @@ class AccountPersonalDetails extends React.Component {
             <Form>
                 <Form.Group as={Row}>
                     <Form.Label xs="auto"
-                                className="font-weight-bolder"
+                                className="custDetailsLabel font-weight-bolder"
                                 column
                                 span="false">Account Id
                     </Form.Label>
@@ -124,35 +104,12 @@ class AccountPersonalDetails extends React.Component {
                         <Form.Control className="accountId"
                                       disabled
                                       plaintext
-                                      value={this.props.accountId}/>
+                                      value={this.props.accountDetails.linearId.id}/>
                     </Col>
                 </Form.Group>
-                <Form.Group as={Row}>
-                    <Form.Label xs="auto"
-                                className="font-weight-bolder"
-                                column
-                                span="false">First Name
-                    </Form.Label>
-                    <Col>
-                        <Form.Control className="nameField"
-                                      disabled
-                                      plaintext
-                                      value={this.props.firstName}/>
-                    </Col>
-                </Form.Group>
-                <Form.Group as={Row}>
-                    <Form.Label xs="auto"
-                                className="font-weight-bolder"
-                                column
-                                span="false">Last Name
-                    </Form.Label>
-                    <Col>
-                        <Form.Control className="nameField"
-                                      disabled
-                                      plaintext
-                                      value={this.props.lastName}/>
-                    </Col>
-                </Form.Group>
+                <CustomerForm customerDetails={this.props.accountDetails.customerDetails}
+                              mode="View"
+                              onChange={this.onChange}/>
             </Form>
             </Card.Body>
             </Card>
@@ -177,6 +134,7 @@ class AccountTransferPanel extends React.Component {
                                 Transfer account to
                             </Form.Label>
                             <Form.Control as="select"
+                                          className="mx-2"
                                           name="newSupplier"
                                           ref="newSupplier">
                                 {
@@ -353,9 +311,7 @@ class App extends React.Component {
                     <NavigationBar nodeInfo={this.state.nodeInfo}/>
                     <Tabs defaultActiveKey="details" id="main-tabs">
                         <Tab eventKey="details" title="My Details">
-                            <AccountPersonalDetails accountId={account.linearId.id}
-                                                    firstName={account.firstName}
-                                                    lastName={account.lastName}/>
+                            <AccountPersonalDetails accountDetails={account}/>
                         </Tab>
                         <Tab eventKey="transfer" title="Transfer Account">
                             <AccountTransferPanel accountId={account.linearId.id}

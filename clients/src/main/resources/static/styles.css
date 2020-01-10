@@ -2,12 +2,21 @@
     margin: 1rem;
 }
 
+.custDetailsLabel {
+    width: 18ch;
+}
+
 .accountId {
     width: 38ch;
+    user-select: all;
 }
 
 .nameField {
     width: 30ch;
+}
+
+.dateField {
+    width 10ch;
 }
 
 .supplierField {

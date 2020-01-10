@@ -8,28 +8,30 @@ import net.corda.core.identity.Party
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
 import net.corda.core.node.services.vault.QueryCriteria
+import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
+import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.DeleteAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.TransferAccountFlowInitiator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
+import java.util.logging.Logger
 
 @RestController
 @RequestMapping("/api")
 class AccountClientApi() {
-
     @Autowired
     lateinit var rpc: CordaRPCOps
 
     private val objectMapper = JacksonSupport.createNonRpcMapper()
 
-    data class CreateTxnBody(val firstName: String, val lastName: String)
+    data class CreateTxnBody(val customerDetails: CustomerDetails)
     data class TransferTxnBody(val accountId: String, val toSupplier: String)
     data class DeleteTxnBody(val accountId: String)
 
-    fun createAccount(firstName: String, lastName: String) : AccountState {
+    fun createAccount(customerDetails: CustomerDetails) : AccountState {
 
         // TODO: Remove hard coding of regulator
         val regulatorParty = rpc.wellKnownPartyFromX500Name(
@@ -39,8 +41,7 @@ class AccountClientApi() {
         return rpc.startFlow(
                 ::CreateAccountFlowInitiator,
                 regulatorParty,
-                firstName,
-                lastName).returnValue.getOrThrow().coreTransaction.outputs.single().data
+                customerDetails).returnValue.getOrThrow().coreTransaction.outputs.single().data
                 as AccountState
     }
 
@@ -86,7 +87,7 @@ class AccountClientApi() {
     fun createAccount(@RequestBody body: CreateTxnBody) : String {
 
         try {
-            createAccount(body.firstName, body.lastName)
+            createAccount(body.customerDetails)
         } catch (e : FlowException) {
             return e.message!!
         }

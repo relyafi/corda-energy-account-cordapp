@@ -9,6 +9,7 @@ import net.corda.core.identity.CordaX500Name
 import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.clients.api.AccountClientApi
+import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.node.services.Permissions
 import net.corda.testing.driver.DriverParameters
 import net.corda.testing.driver.InProcess
@@ -18,6 +19,7 @@ import net.corda.testing.node.User
 import org.hamcrest.MatcherAssert
 import org.hamcrest.text.StringContainsInOrder
 import org.junit.Test
+import java.time.LocalDate
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
@@ -33,6 +35,28 @@ class IntegrationTests {
             CordaX500Name("British Energy", "Manchester", "GB")
     private val supplierBName =
             CordaX500Name("UK Power", "Newcastle", "GB")
+
+    private val customerA = CustomerDetails(
+            "Alice",
+            "Anderson",
+            LocalDate.parse("1980-01-01"),
+            "1 London Wall")
+
+    private val customerB = CustomerDetails(
+            "Bob",
+            "Benson",
+            LocalDate.parse("1981-02-02"),
+            "2 Old Jewry",
+            "01234 567890",
+            "bob.benson@gmail.com")
+
+    private val customerC = CustomerDetails(
+            "Charlie",
+            "Chapman",
+            LocalDate.parse("1982-10-20"),
+            "3 Poultry Lane",
+            "01234 567890",
+            "charlie.chapman@live.com")
 
     @Test
     fun `Account integration tests`() {
@@ -60,10 +84,10 @@ class IntegrationTests {
             }
 
             // Create two accounts, one on each supplier
-            val accountAId = supplierACli.createAccount("Alice", "Anderson").linearId
+            val accountAId = supplierACli.createAccount(customerA).linearId
             log.info("Created account A with ID $accountAId")
 
-            val accountBId = supplierBCli.createAccount("Bob", "Benson").linearId
+            val accountBId = supplierBCli.createAccount(customerB).linearId
             log.info("Created account B with ID $accountBId")
 
             // Confirm that the supplier knows about only their owned accounts, and the regulator
@@ -76,17 +100,29 @@ class IntegrationTests {
                     listOf(supplierACli, supplierBCli, regulatorCli)
                             .map { it.getAccountByLinearId(accountBId) }
 
-            assertThat(supplierA_A?.firstName, equalTo("Alice"))
-            assertThat(supplierA_A?.lastName, equalTo("Anderson"))
+            with (supplierA_A!!.customerDetails) {
+                assertThat(firstName, equalTo("Alice"))
+                assertThat(lastName, equalTo("Anderson"))
+            }
+
             assertNull(supplierB_A)
-            assertThat(regulator_A?.firstName, equalTo("Alice"))
-            assertThat(regulator_A?.lastName, equalTo("Anderson"))
+
+            with (regulator_A!!.customerDetails) {
+                assertThat(firstName, equalTo("Alice"))
+                assertThat(lastName, equalTo("Anderson"))
+            }
 
             assertNull(supplierA_B)
-            assertThat(supplierB_B?.firstName, equalTo("Bob"))
-            assertThat(supplierB_B?.lastName, equalTo("Benson"))
-            assertThat(regulator_B?.firstName, equalTo("Bob"))
-            assertThat(regulator_B?.lastName, equalTo("Benson"))
+
+            with (supplierB_B!!.customerDetails) {
+                assertThat(firstName, equalTo("Bob"))
+                assertThat(lastName, equalTo("Benson"))
+            }
+
+            with (regulator_B!!.customerDetails) {
+                assertThat(firstName, equalTo("Bob"))
+                assertThat(lastName, equalTo("Benson"))
+            }
 
             // Attempt to delete account B as regulator and supplier A - expected failure
             with(assertFailsWith<FlowException> {
@@ -117,7 +153,7 @@ class IntegrationTests {
             }
 
             // Create another new account with supplier A
-            val accountCId = supplierACli.createAccount("Charlie", "Chaplin").linearId
+            val accountCId = supplierACli.createAccount(customerC).linearId
             val supplierAIdentity = supplierA.nodeInfo.legalIdentities[0]
             val supplierBIdentity = supplierB.nodeInfo.legalIdentities[0]
 
@@ -127,13 +163,21 @@ class IntegrationTests {
                     listOf(supplierACli, supplierBCli, regulatorCli)
                             .map { it.getAccountByLinearId(accountCId) }
 
-            assertThat(supplierA_C?.firstName, equalTo("Charlie"))
-            assertThat(supplierA_C?.lastName, equalTo("Chaplin"))
-            assertThat(supplierA_C?.supplier, equalTo(supplierAIdentity))
+            with (supplierA_C!!.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
+            assertThat(supplierA_C.supplier, equalTo(supplierAIdentity))
+
             assertNull(supplierB_C)
-            assertThat(regulator_C?.firstName, equalTo("Charlie"))
-            assertThat(regulator_C?.lastName, equalTo("Chaplin"))
-            assertThat(regulator_C?.supplier, equalTo(supplierAIdentity))
+
+            with (regulator_C!!.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
+            assertThat(regulator_C.supplier, equalTo(supplierAIdentity))
 
             // Transfer account to supplier B
             supplierACli.transferAccount(accountCId, supplierBIdentity)
@@ -144,11 +188,19 @@ class IntegrationTests {
                             .map { it.getAccountByLinearId(accountCId) }
 
             assertNull(supplierA_C_2)
-            assertThat(supplierB_C_2?.firstName, equalTo("Charlie"))
-            assertThat(supplierB_C_2?.lastName, equalTo("Chaplin"))
-            assertThat(supplierB_C_2?.supplier, equalTo(supplierBIdentity))
-            assertThat(regulator_C_2?.firstName, equalTo("Charlie"))
-            assertThat(regulator_C_2?.lastName, equalTo("Chaplin"))
+
+            with (supplierB_C_2!!.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
+            assertThat(supplierB_C_2.supplier, equalTo(supplierBIdentity))
+
+            with (supplierB_C_2.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
             assertThat(regulator_C_2?.supplier, equalTo(supplierBIdentity))
 
             // Attempt transfer from A->B again - expected failure
@@ -186,12 +238,20 @@ class IntegrationTests {
                     listOf(supplierACli, supplierBCli, regulatorCli)
                             .map { it.getAccountByLinearId(accountCId) }
 
-            assertThat(supplierA_C_3?.firstName, equalTo("Charlie"))
-            assertThat(supplierA_C_3?.lastName, equalTo("Chaplin"))
-            assertThat(supplierA_C_3?.supplier, equalTo(supplierAIdentity))
+            with (supplierA_C_3!!.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
+            assertThat(supplierA_C_3.supplier, equalTo(supplierAIdentity))
+
             assertNull(supplierB_C_3)
-            assertThat(regulator_C_3?.firstName, equalTo("Charlie"))
-            assertThat(regulator_C_3?.lastName, equalTo("Chaplin"))
+
+            with (supplierA_C_3.customerDetails) {
+                assertThat(firstName, equalTo("Charlie"))
+                assertThat(lastName, equalTo("Chapman"))
+            }
+
             assertThat(regulator_C_3?.supplier, equalTo(supplierAIdentity))
 
             // Attempt transfer of deleted account - expected failure

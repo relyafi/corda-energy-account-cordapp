@@ -21,7 +21,11 @@ class AccountContractCreateTests : AccountContractTestBase() {
             command(defaultSigners, AccountContract.Commands.Create())
             `fails with` ("A transaction must contain at least one input or output state")
             output(AccountContract.ID, defaultState)
-            output(AccountContract.ID, defaultState.withNewName("Alice", "Anderson"))
+            output(AccountContract.ID,
+                   defaultState.copy(
+                           customerDetails = defaultState.customerDetails.copy(
+                                   firstName = "Alice",
+                                   lastName = "Anderson")))
             `fails with` ("A single account must be created")
         }
     }
@@ -30,7 +34,7 @@ class AccountContractCreateTests : AccountContractTestBase() {
     fun `The supplier has not signed the transaction`() {
         ledgerServices.transaction() {
             command(defaultSigners, AccountContract.Commands.Create())
-            output(AccountContract.ID, defaultState.withNewSupplier(ukPower.party))
+            output(AccountContract.ID, defaultState.copy(supplier = ukPower.party))
             `fails with` ("All participants have signed the transaction")
         }
     }
@@ -53,7 +57,11 @@ class AccountContractCreateTests : AccountContractTestBase() {
                 Pair("", "Blogs"))) {
             ledgerServices.transaction() {
                 command(defaultSigners, AccountContract.Commands.Create())
-                output(AccountContract.ID, defaultState.withNewName(firstName, lastName))
+                output(AccountContract.ID,
+                       defaultState.copy(
+                               customerDetails = defaultState.customerDetails.copy(
+                                       firstName = firstName,
+                                       lastName = lastName)))
                 `fails with` ("Name is populated")
             }
         }

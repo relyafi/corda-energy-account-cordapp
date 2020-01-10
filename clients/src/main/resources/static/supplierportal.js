@@ -1,25 +1,3 @@
-"use strict";
-
-let Alert = ReactBootstrap.Alert;
-let Accordion = ReactBootstrap.Accordion;
-let Button = ReactBootstrap.Button;
-let ButtonGroup = ReactBootstrap.ButtonGroup;
-let Card = ReactBootstrap.Card;
-let Col = ReactBootstrap.Col;
-let Container = ReactBootstrap.Container;
-let Form = ReactBootstrap.Form;
-let InputGroup = ReactBootstrap.InputGroup;
-let ListGroup = ReactBootstrap.ListGroup;
-let Modal = ReactBootstrap.Modal;
-let NavBar = ReactBootstrap.Navbar;
-let Row = ReactBootstrap.Row;
-let Table = ReactBootstrap.BootstrapTable;
-let Text = ReactBootstrap.Text;
-
-function getIdentityDisplayName(X500Name) {
-    return X500Name.match("(?<=O=).*(?=, L=)")[0]
-}
-
 class NavigationBar extends React.Component {
     constructor(props) {
         super(props);
@@ -66,9 +44,10 @@ class AccountList extends React.Component {
                 <ListGroup className="mb-2 mx-n2">
                     <ListGroup.Item className="bg-light">
                         <Row className="font-weight-bolder my-n1">
-                            <Col className="accountId" xs={5}>Account Id</Col>
+                            <Col className="accountId" xs={4}>Account Id</Col>
                             <Col className="namefield">First Name</Col>
                             <Col className="namefield">Last Name</Col>
+                            <Col className="datefield">Date Of Birth</Col>
                         </Row>
                     </ListGroup.Item>
                     { this.props.accounts.map(
@@ -81,9 +60,10 @@ class AccountList extends React.Component {
                                             onClick={(id) => this.props.onAccountSelect(
                                                 account.linearId.id)}>
                                 <Row className="my-n1">
-                                    <Col className="accountId" xs={5}>{account.linearId.id}</Col>
-                                    <Col className="namefield">{account.firstName}</Col>
-                                    <Col className="namefield">{account.lastName}</Col>
+                                    <Col className="accountId" xs={4}>{account.linearId.id}</Col>
+                                    <Col className="namefield">{account.customerDetails.firstName}</Col>
+                                    <Col className="namefield">{account.customerDetails.lastName}</Col>
+                                    <Col className="datefield">{account.customerDetails.dateOfBirth}</Col>
                                 </Row>
                             </ListGroup.Item>
                     )}
@@ -100,56 +80,14 @@ class AccountList extends React.Component {
                             disabled={this.props.activeAccountId == ""}
                             onClick={this.props.onAccountDeleteRequest}>Delete Account</Button>
                 </ButtonGroup>
+                <ButtonGroup className="mx-3">
+                    <Button variant="dark"
+                            disabled={this.props.activeAccountId == ""}
+                            onClick={this.props.onAccountViewRequest}>View Details</Button>
+                </ButtonGroup>
             </Container>
             </div>
         )
-    }
-}
-
-class AccountForm extends React.Component {
-    constructor(props) {
-        super(props);
-
-        this.handleFieldChange = this.handleFieldChange.bind(this);
-    }
-
-    render() {
-        return (
-            <Form>
-                <Form.Group as={Row}>
-                    <Form.Label xs={3}
-                                className="font-weight-bolder"
-                                column
-                                span="false">First Name
-                    </Form.Label>
-                    <Col>
-                        <Form.Control className="nameField"
-                                      placeholder="required"
-                                      onChange={this.handleFieldChange}
-                                      name="firstName"
-                                      value={this.props.accountDetails.firstName}/>
-                    </Col>
-                </Form.Group>
-                <Form.Group as={Row}>
-                    <Form.Label xs={3}
-                                className="font-weight-bolder"
-                                column
-                                span="false">Last Name
-                    </Form.Label>
-                    <Col>
-                        <Form.Control className="nameField"
-                                      placeholder="required"
-                                      onChange={this.handleFieldChange}
-                                      name="lastName"
-                                      value={this.props.accountDetails.lastName}/>
-                    </Col>
-                </Form.Group>
-            </Form>
-        )
-    }
-
-    handleFieldChange(event) {
-        this.props.onChange(event.target.name, event.target.value);
     }
 }
 
@@ -158,7 +96,7 @@ class AccountCreateDialog extends React.Component {
         super(props);
 
         this.state = {
-            accountDetails: {}
+            accountDetails: { customerDetails: {} }
         }
 
         this.onChange = this.onChange.bind(this);
@@ -172,18 +110,19 @@ class AccountCreateDialog extends React.Component {
                     <Modal.Header>
                         <Modal.Title>Create Account</Modal.Title>
                     </Modal.Header>
-                        <Modal.Body>
-                            { this.props.actionResult != "OK" &&
-                             <AccountForm accountDetails={this.state.accountDetails}
-                                          onChange={this.onChange}/>
-                            }
-                            { this.props.actionResult == "FAIL" &&
-                             <div className="text-danger">Account creation failed</div>
-                            }
-                            { (this.props.actionResult == "OK") &&
-                             "Account was successfully created."
-                            }
-                        </Modal.Body>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                         <CustomerForm customerDetails={this.state.accountDetails.customerDetails}
+                                       mode={this.props.actionState}
+                                       onChange={this.onChange}/>
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         <div className="text-danger">Account creation failed</div>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Account was successfully created."
+                        }
+                    </Modal.Body>
                     <Modal.Footer>
                         { (this.props.actionResult != "OK") &&
                             <ButtonGroup>
@@ -210,14 +149,20 @@ class AccountCreateDialog extends React.Component {
     }
 
     onChange(field, value) {
-        this.setState({accountDetails: Object.assign(
-                            {},
-                            this.state.accountDetails,
-                            {[field]: value})});
+        this.setState(
+            {accountDetails: Object.assign(
+                {},
+                this.state.accountDetails,
+                {customerDetails: Object.assign(
+                     {},
+                     this.state.accountDetails.customerDetails,
+                     {[field]: value})
+                })
+            });
     }
 
     handleClose() {
-        this.setState({accountDetails: {}});
+        this.setState({ accountDetails: { customerDetails: {} }});
         this.props.onClose();
     }
 }
@@ -292,6 +237,7 @@ class App extends React.Component {
             accounts: [],
             initialised: false,
             activeAccountId: "",
+            activeAccount: {},
             currentAction: "",
             actionResult: ""};
 
@@ -299,6 +245,7 @@ class App extends React.Component {
         this.getNetworkMap = this.getNetworkMap.bind(this);
         this.accountCreateRequest = this.accountCreateRequest.bind(this);
         this.accountDeleteRequest = this.accountDeleteRequest.bind(this);
+        this.accountViewRequest = this.accountViewRequest.bind(this);
         this.accountSelect = this.accountSelect.bind(this);
         this.createAccount = this.createAccount.bind(this);
         this.deleteAccount = this.deleteAccount.bind(this);
@@ -338,8 +285,21 @@ class App extends React.Component {
         this.setState({currentAction: "Delete"})
     }
 
+    accountViewRequest(event) {
+        this.setState({currentAction: "View"})
+    }
+
     accountSelect(id) {
-        this.setState({activeAccountId: id})
+        var foundAccount = false;
+        for (let i = 0;
+             i < this.state.accounts.length && !foundAccount;
+             ++i) {
+            if (this.state.accounts[i].linearId.id == id) {
+                foundAccount = true;
+                this.setState({activeAccountId: id,
+                               activeAccount: this.state.accounts[i]})
+            }
+        }
     }
 
     createAccount(accountDetails) {
@@ -399,7 +359,8 @@ class App extends React.Component {
                              activeAccountId={this.state.activeAccountId}
                              onAccountSelect={this.accountSelect}
                              onAccountCreateRequest={this.accountCreateRequest}
-                             onAccountDeleteRequest={this.accountDeleteRequest} />
+                             onAccountDeleteRequest={this.accountDeleteRequest}
+                             onAccountViewRequest={this.accountViewRequest}/>
                 }
                 <AccountCreateDialog actionState={this.state.currentAction}
                                      actionResult={this.state.actionResult}
@@ -411,6 +372,9 @@ class App extends React.Component {
                                      accountId={this.state.activeAccountId}
                                      onClose={this.finishAction}
                                      onDeleteConfirm={this.deleteAccount}/>
+                <AccountViewDialog actionState={this.state.currentAction}
+                                     accountDetails={this.state.activeAccount}
+                                     onClose={this.finishAction}/>
             </div>
         )
     }

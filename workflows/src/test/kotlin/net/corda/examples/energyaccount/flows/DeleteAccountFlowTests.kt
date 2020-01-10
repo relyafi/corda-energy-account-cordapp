@@ -18,7 +18,7 @@ class DeleteAccountFlowTests : AccountFlowTestBase() {
 
     @Before
     fun initialiseExistingAccount() {
-        val stx = createAcount(supplierA, "Alice", "Anderson")
+        val stx = createAccount(supplierA, defaultCustomerDetails)
 
         network.waitQuiescent()
 

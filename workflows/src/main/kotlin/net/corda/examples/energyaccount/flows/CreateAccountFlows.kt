@@ -7,6 +7,8 @@ import net.corda.core.node.StatesToRecord
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.examples.energyaccount.contracts.AccountContract
+import net.corda.examples.energyaccount.contracts.CustomerDetails
+import java.util.*
 
 // *********
 // * Flows *
@@ -16,8 +18,7 @@ import net.corda.examples.energyaccount.contracts.AccountContract
 // TODO The regulator party should be fixed and not specifiable on the transaction
 class CreateAccountFlowInitiator(
         private val regulator: Party,
-        private val firstName : String,
-        private val lastName : String) : AccountBaseFlow() {
+        private val customerDetails: CustomerDetails) : AccountBaseFlow() {
 
     companion object {
         object BUILDING : ProgressTracker.Step("Building and verifying transaction.")
@@ -45,8 +46,7 @@ class CreateAccountFlowInitiator(
                 notary,
                 regulator,
                 ourIdentity,
-                firstName,
-                lastName)
+                customerDetails)
         utx.verify(serviceHub)
 
         progressTracker.currentStep = SIGNING

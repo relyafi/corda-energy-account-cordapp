@@ -1,0 +1,47 @@
+[
+    {
+        "host": "localhost:10050",
+        "firstName": "Alice",
+        "lastName": "Anderson",
+        "dateOfBirth": "1981-01-01",
+        "address": "1, Union Street, Aberdeen",
+        "phoneNumber": "01111 111111",
+        "email": ""
+    },
+    {
+        "host": "localhost:10050",
+        "firstName": "Bob",
+        "lastName": "Benson",
+        "dateOfBirth": "1982-02-02",
+        "address": "2, Baldwin Street, Bristol",
+        "phoneNumber": "01222 222222",
+        "email": "bben82@live.com"
+    },
+    {
+        "host": "localhost:10050",
+        "firstName": "Charlie",
+        "lastName": "Clarkson",
+        "dateOfBirth": "1983-03-03",
+        "address": "3, Richmond Road, Cardiff",
+        "phoneNumber": "01333 333333",
+        "email": "cclarkson@outlook.com"
+    },
+    {
+        "host": "localhost:10051",
+        "firstName": "Dave",
+        "lastName": "Davidson",
+        "dateOfBirth": "1984-04-04",
+        "address": "4, Allergate, Durham",
+        "phoneNumber": "01444 444444",
+        "email": "davedavidson@plus.net"
+    },
+    {
+        "host": "localhost:10051",
+        "firstName": "Eddie",
+        "lastName": "Edison",
+        "dateOfBirth": "1985-05-05",
+        "address": "5, Princes Street, Edinburgh",
+        "phoneNumber": "",
+        "email": "eddie.edison@gmail.com"
+    }
+]
