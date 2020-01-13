@@ -8,16 +8,15 @@ import net.corda.core.identity.Party
 import net.corda.core.messaging.CordaRPCOps
 import net.corda.core.messaging.startFlow
 import net.corda.core.node.services.vault.QueryCriteria
-import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.DeleteAccountFlowInitiator
+import net.corda.examples.energyaccount.flows.ModifyAccountFlowInitiator
 import net.corda.examples.energyaccount.flows.TransferAccountFlowInitiator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
-import java.util.logging.Logger
 
 @RestController
 @RequestMapping("/api")
@@ -28,6 +27,7 @@ class AccountClientApi() {
     private val objectMapper = JacksonSupport.createNonRpcMapper()
 
     data class CreateTxnBody(val customerDetails: CustomerDetails)
+    data class ModifyTxnBody(val accountId: String, val customerDetails: CustomerDetails)
     data class TransferTxnBody(val accountId: String, val toSupplier: String)
     data class DeleteTxnBody(val accountId: String)
 
@@ -42,6 +42,25 @@ class AccountClientApi() {
                 ::CreateAccountFlowInitiator,
                 regulatorParty,
                 customerDetails).returnValue.getOrThrow().coreTransaction.outputs.single().data
+                as AccountState
+    }
+
+    fun modifyAccount(id: UniqueIdentifier, newCustomerDetails: CustomerDetails) : AccountState {
+
+        return rpc.startFlow(
+                ::ModifyAccountFlowInitiator,
+                id,
+                newCustomerDetails).returnValue.getOrThrow().coreTransaction.outputs.single().data
+                as AccountState
+    }
+
+
+    fun transferAccount(id: UniqueIdentifier, toSupplier: Party) : AccountState {
+
+        return rpc.startFlow(
+                ::TransferAccountFlowInitiator,
+                id,
+                toSupplier).returnValue.getOrThrow().coreTransaction.outputs.single().data
                 as AccountState
     }
 
@@ -74,20 +93,26 @@ class AccountClientApi() {
         return results.map { it.state.data }
     }
 
-    fun transferAccount(id: UniqueIdentifier, toSupplier: Party) : AccountState {
-
-        return rpc.startFlow(
-                ::TransferAccountFlowInitiator,
-                id,
-                toSupplier).returnValue.getOrThrow().coreTransaction.outputs.single().data
-                as AccountState
-    }
 
     @PostMapping(value = ["/createAccount"])
     fun createAccount(@RequestBody body: CreateTxnBody) : String {
 
         try {
             createAccount(body.customerDetails)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
+    }
+
+    @PatchMapping(value = ["/modifyAccount"])
+    fun modifyAccount(@RequestBody body: ModifyTxnBody) : String {
+
+        val uid = UniqueIdentifier.fromString(body.accountId)
+
+        try {
+            modifyAccount(uid, body.customerDetails)
         } catch (e : FlowException) {
             return e.message!!
         }

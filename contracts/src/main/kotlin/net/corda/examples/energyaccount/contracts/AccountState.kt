@@ -6,7 +6,6 @@ import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.identity.AbstractParty
 import net.corda.core.identity.Party
 import net.corda.examples.energyaccount.contracts.AccountContract
-import java.util.*
 
 @BelongsToContract(AccountContract::class)
 data class AccountState(

@@ -59,7 +59,7 @@ class IntegrationTests {
             "charlie.chapman@live.com")
 
     @Test
-    fun `Account integration tests`() {
+    fun `Account integration tests - create, modify, transfer, delete`() {
         val user = User("user1", "test", setOf(Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = true,
@@ -253,6 +253,17 @@ class IntegrationTests {
             }
 
             assertThat(regulator_C_3?.supplier, equalTo(supplierAIdentity))
+
+            // Modify account C
+            supplierACli.modifyAccount(accountCId, customerC.copy(email = "newemail@gmail.com"))
+
+            val (supplierA_C_4, supplierB_C_4, regulator_C_4) =
+                    listOf(supplierACli, supplierBCli, regulatorCli)
+                            .map { it.getAccountByLinearId(accountCId) }
+
+            assertThat(supplierA_C_4?.customerDetails?.email, equalTo("newemail@gmail.com"))
+            assertNull(supplierB_C_4)
+            assertThat(regulator_C_4?.customerDetails?.email, equalTo("newemail@gmail.com"))
 
             // Attempt transfer of deleted account - expected failure
             with(assertFailsWith<FlowException> {

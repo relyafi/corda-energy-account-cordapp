@@ -78,6 +78,9 @@ class AccountList extends React.Component {
                             onClick={this.props.onAccountCreateRequest}>Create Account</Button>
                     <Button variant="dark"
                             disabled={this.props.activeAccountId == ""}
+                            onClick={this.props.onAccountModifyRequest}>Modify Account</Button>
+                    <Button variant="dark"
+                            disabled={this.props.activeAccountId == ""}
                             onClick={this.props.onAccountDeleteRequest}>Delete Account</Button>
                 </ButtonGroup>
                 <ButtonGroup className="mx-3">
@@ -167,6 +170,77 @@ class AccountCreateDialog extends React.Component {
     }
 }
 
+class AccountModifyDialog extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            customerDetails: this.props.accountDetails.customerDetails
+        }
+
+        this.onChange = this.onChange.bind(this);
+        this.handleClose = this.handleClose.bind(this);
+    }
+
+    render() {
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.actionState == "Modify"}>
+                    <Modal.Header>
+                        <Modal.Title>Modify Account</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                         <CustomerForm customerDetails={this.state.customerDetails}
+                                       mode={this.props.actionState}
+                                       onChange={this.onChange}/>
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         <div className="text-danger">Account modification failed</div>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Account was successfully modified."
+                        }
+                    </Modal.Body>
+                    <Modal.Footer>
+                        { (this.props.actionResult != "OK") &&
+                            <ButtonGroup>
+                                <Button variant="success"
+                                        disabled={this.props.actionResult == "PENDING"}
+                                        onClick={() =>
+                                            this.props.onModifyConfirm(this.state.customerDetails)}>
+                                    Modify
+                                </Button>
+                                <Button variant="secondary" onClick={this.handleClose}>
+                                    Cancel
+                                </Button>
+                            </ButtonGroup>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                              <Button onClick={this.handleClose}>
+                                  Close
+                              </Button>
+                        }
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    onChange(field, value) {
+        this.setState(
+            {customerDetails: Object.assign(
+                 {},
+                 this.state.customerDetails,
+                 {[field]: value})
+            });
+    }
+
+    handleClose() {
+        this.props.onClose();
+    }
+}
+
 class AccountDeleteDialog extends React.Component {
     constructor(props) {
         super(props);
@@ -244,10 +318,12 @@ class App extends React.Component {
         this.getNodeInfo = this.getNodeInfo.bind(this);
         this.getNetworkMap = this.getNetworkMap.bind(this);
         this.accountCreateRequest = this.accountCreateRequest.bind(this);
+        this.accountModifyRequest = this.accountModifyRequest.bind(this);
         this.accountDeleteRequest = this.accountDeleteRequest.bind(this);
         this.accountViewRequest = this.accountViewRequest.bind(this);
         this.accountSelect = this.accountSelect.bind(this);
         this.createAccount = this.createAccount.bind(this);
+        this.modifyAccount = this.modifyAccount.bind(this);
         this.deleteAccount = this.deleteAccount.bind(this);
         this.finishAction = this.finishAction.bind(this);
     }
@@ -281,6 +357,10 @@ class App extends React.Component {
         this.setState({currentAction: "Create"})
     }
 
+    accountModifyRequest(event) {
+        this.setState({currentAction: "Modify" })
+    }
+
     accountDeleteRequest(event) {
         this.setState({currentAction: "Delete"})
     }
@@ -311,6 +391,29 @@ class App extends React.Component {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(accountDetails)
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
+    }
+
+     modifyAccount(customerDetails) {
+        this.setState({actionResult: "PENDING"})
+        return fetch('/api/modifyAccount', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: this.state.activeAccountId,
+                customerDetails: customerDetails
+            })
         })
             .then(result => result.text())
             .then(result => {
@@ -359,6 +462,7 @@ class App extends React.Component {
                              activeAccountId={this.state.activeAccountId}
                              onAccountSelect={this.accountSelect}
                              onAccountCreateRequest={this.accountCreateRequest}
+                             onAccountModifyRequest={this.accountModifyRequest}
                              onAccountDeleteRequest={this.accountDeleteRequest}
                              onAccountViewRequest={this.accountViewRequest}/>
                 }
@@ -367,12 +471,20 @@ class App extends React.Component {
                                      onClose={this.finishAction}
                                      onCreateConfirm={(accountDetails) =>
                                          this.createAccount(accountDetails)}/>
+                <AccountModifyDialog key={this.state.activeAccountId}
+                                     actionState={this.state.currentAction}
+                                     actionResult={this.state.actionResult}
+                                     accountDetails={this.state.activeAccount}
+                                     onClose={this.finishAction}
+                                     onModifyConfirm={(accountDetails) =>
+                                         this.modifyAccount(accountDetails)}/>
                 <AccountDeleteDialog actionState={this.state.currentAction}
                                      actionResult={this.state.actionResult}
                                      accountId={this.state.activeAccountId}
                                      onClose={this.finishAction}
                                      onDeleteConfirm={this.deleteAccount}/>
-                <AccountViewDialog actionState={this.state.currentAction}
+                <AccountViewDialog   key={this.state.activeAccountId}
+                                     actionState={this.state.currentAction}
                                      accountDetails={this.state.activeAccount}
                                      onClose={this.finishAction}/>
             </div>

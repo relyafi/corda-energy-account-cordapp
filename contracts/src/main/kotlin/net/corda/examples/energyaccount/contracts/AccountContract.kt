@@ -5,12 +5,13 @@ import net.corda.core.identity.Party
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import java.security.PublicKey
-import java.util.*
+import java.time.LocalDate
 
 class AccountContract : Contract {
 
     interface Commands : CommandData {
         class Create: Commands, TypeOnlyCommandData()
+        class Modify: Commands, TypeOnlyCommandData()
         class Transfer: Commands, TypeOnlyCommandData()
         class Delete: Commands, TypeOnlyCommandData()
     }
@@ -31,6 +32,19 @@ class AccountContract : Contract {
                     .addCommand(Command(Commands.Create(), listOf(
                             regulator.owningKey,
                             supplier.owningKey)))
+        }
+
+        fun generateAccountModify(
+                notary: Party,
+                account: StateAndRef<AccountState>,
+                newCustomerDetails: CustomerDetails) : TransactionBuilder {
+            return TransactionBuilder(notary)
+                    .addInputState(account)
+                    .addOutputState(account.state.data.copy(
+                            customerDetails = newCustomerDetails))
+                    .addCommand(Command(Commands.Modify(), listOf(
+                            account.state.data.regulator.owningKey,
+                            account.state.data.supplier.owningKey)))
         }
 
         fun generateAccountTransfer(
@@ -63,6 +77,7 @@ class AccountContract : Contract {
 
         when (cmd.value) {
             is Commands.Create -> validateCreate(tx, signers)
+            is Commands.Modify -> validateModify(tx, signers)
             is Commands.Transfer -> validateTransfer(tx, signers)
             is Commands.Delete -> validateDelete(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command")
@@ -93,6 +108,27 @@ class AccountContract : Contract {
         }
     }
 
+    private fun validateModify(tx: LedgerTransaction, signers: Set<PublicKey>) {
+        requireThat {
+            "A single account must be consumed" using (tx.inputs.size == 1)
+            "A single account must be created" using (tx.outputs.size == 1)
+        }
+
+        val inState = tx.inputsOfType<AccountState>().single()
+        val outState = tx.outputsOfType<AccountState>().single()
+
+        validateMandatoryAccountFields(outState)
+
+        requireThat {
+            "The account id must be the same" using
+                    inState.linearId.equals(outState.linearId)
+            "The old and new supplier must be the same" using
+                    inState.supplier.hashCode().equals(outState.supplier.hashCode())
+            "All participants have signed the transaction" using
+                    signers.containsAll(keysFromParticipants(outState))
+        }
+    }
+
     private fun validateTransfer(tx: LedgerTransaction, signers: Set<PublicKey>) {
 
         requireThat {
@@ -110,6 +146,8 @@ class AccountContract : Contract {
                     signers.containsAll(keysFromParticipants(outState))
             "The regulator has signed the transaction" using
                     signers.contains(outState.regulator.owningKey)
+            "The customer details must be the same" using
+                    inState.customerDetails.equals(outState.customerDetails)
         }
     }
 
@@ -129,7 +167,13 @@ class AccountContract : Contract {
     }
 
     private fun validateMandatoryAccountFields(account: AccountState) = requireThat {
+
         "Name is populated" using (account.customerDetails.firstName.isNotEmpty() &&
                                    account.customerDetails.lastName.isNotEmpty())
+        "Date Of Birth is valid" using (account.customerDetails.dateOfBirth.isBefore(
+                                                LocalDate.now().minusYears(18)) &&
+                                        account.customerDetails.dateOfBirth.isAfter(
+                                                LocalDate.now().minusYears(130)))
+        "Address is populated" using (account.customerDetails.address.isNotEmpty())
     }
 }

@@ -14,7 +14,6 @@ import net.corda.examples.energyaccount.contracts.AccountContract
 // *********
 @InitiatingFlow
 @StartableByRPC
-// TODO The regulator party should be fixed and not specifiable on the transaction
 class TransferAccountFlowInitiator(
         private val accountLinearId: UniqueIdentifier,
         private val newSupplier: Party) : AccountBaseFlow() {

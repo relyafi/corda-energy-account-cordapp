@@ -4,23 +4,23 @@ import net.corda.testing.node.transaction
 import org.junit.Test
 import java.time.LocalDate
 
-class AccountContractCreateTests : AccountContractTestBase() {
+class AccountContractModifyTests : AccountContractTestBase() {
 
     @Test
-    fun `Input state provided`() {
+    fun `No input state provided`() {
         ledgerServices.transaction() {
-            input(AccountContract.ID, defaultState)
-            command(defaultSigners, AccountContract.Commands.Create())
+            command(defaultSigners, AccountContract.Commands.Modify())
             output(AccountContract.ID, defaultState)
-            `fails with` ("No inputs should be consumed")
+            `fails with` ("A single account must be consumed")
         }
     }
 
     @Test
     fun `Wrong number of output states provided`() {
         ledgerServices.transaction() {
-            command(defaultSigners, AccountContract.Commands.Create())
+            command(defaultSigners, AccountContract.Commands.Modify())
             `fails with` ("A transaction must contain at least one input or output state")
+            input(AccountContract.ID, defaultState)
             output(AccountContract.ID, defaultState)
             output(AccountContract.ID,
                    defaultState.copy(
@@ -34,18 +34,23 @@ class AccountContractCreateTests : AccountContractTestBase() {
     @Test
     fun `The supplier has not signed the transaction`() {
         ledgerServices.transaction() {
-            command(defaultSigners, AccountContract.Commands.Create())
-            output(AccountContract.ID, defaultState.copy(supplier = ukPower.party))
+            command(listOf(regulator.publicKey), AccountContract.Commands.Modify())
+            input(AccountContract.ID, defaultState)
+            output(AccountContract.ID, defaultState.copy(
+                    customerDetails = defaultState.customerDetails.copy(
+                            address = "2, Moorgate")))
             `fails with` ("All participants have signed the transaction")
         }
     }
 
     @Test
-    fun `The regulator has not signed the transaction`() {
+    fun `The supplier has changed`() {
         ledgerServices.transaction() {
-            command(listOf(britishEnergy.publicKey), AccountContract.Commands.Create())
-            output(AccountContract.ID, defaultState)
-            `fails with` ("The regulator has signed the transaction")
+            command(listOf(regulator.publicKey), AccountContract.Commands.Modify())
+            input(AccountContract.ID, defaultState)
+            output(AccountContract.ID, defaultState.copy(
+                    supplier = ukPower.party))
+            `fails with` ("The old and new supplier must be the same")
         }
     }
 
@@ -57,7 +62,8 @@ class AccountContractCreateTests : AccountContractTestBase() {
                 Pair("Joe", ""),
                 Pair("", "Blogs"))) {
             ledgerServices.transaction() {
-                command(defaultSigners, AccountContract.Commands.Create())
+                command(defaultSigners, AccountContract.Commands.Modify())
+                input(AccountContract.ID, defaultState)
                 output(AccountContract.ID,
                        defaultState.copy(
                                customerDetails = defaultState.customerDetails.copy(
@@ -68,7 +74,8 @@ class AccountContractCreateTests : AccountContractTestBase() {
         }
 
         ledgerServices.transaction() {
-            command(defaultSigners, AccountContract.Commands.Create())
+            command(defaultSigners, AccountContract.Commands.Modify())
+            input(AccountContract.ID, defaultState)
             output(AccountContract.ID,
                     defaultState.copy(
                             customerDetails = defaultState.customerDetails.copy(
@@ -82,7 +89,8 @@ class AccountContractCreateTests : AccountContractTestBase() {
         // TODO: See if we can make this a proper JUnit parameterised test
         for (dateOfBirth in listOf(LocalDate.now(), LocalDate.now().minusYears(150))) {
             ledgerServices.transaction() {
-                command(defaultSigners, AccountContract.Commands.Create())
+                command(defaultSigners, AccountContract.Commands.Modify())
+                input(AccountContract.ID, defaultState)
                 output(AccountContract.ID,
                         defaultState.copy(
                                 customerDetails = defaultState.customerDetails.copy(
@@ -93,10 +101,14 @@ class AccountContractCreateTests : AccountContractTestBase() {
     }
 
     @Test
-    fun `Valid create transaction`() {
+    fun `Valid  modify transaction`() {
         ledgerServices.transaction() {
-            command(defaultSigners, AccountContract.Commands.Create())
-            output(AccountContract.ID, defaultState)
+            command(defaultSigners, AccountContract.Commands.Modify())
+            input(AccountContract.ID, defaultState)
+            output(AccountContract.ID,
+                    defaultState.copy(
+                            customerDetails = defaultState.customerDetails.copy(
+                                    address = "2, Moorgate")))
             verifies()
         }
     }

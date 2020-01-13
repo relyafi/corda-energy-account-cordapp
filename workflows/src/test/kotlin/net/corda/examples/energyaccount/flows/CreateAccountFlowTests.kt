@@ -4,7 +4,6 @@ import net.corda.core.contracts.hash
 import net.corda.core.flows.FlowException
 import net.corda.core.node.services.queryBy
 import net.corda.examples.energyaccount.contracts.AccountState
-import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.testing.core.singleIdentity
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.containsString

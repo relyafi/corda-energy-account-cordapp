@@ -5,7 +5,6 @@ import net.corda.testing.core.TestIdentity
 import net.corda.testing.node.MockServices
 import net.corda.testing.node.makeTestIdentityService
 import java.time.LocalDate
-import java.util.*
 
 abstract class AccountContractTestBase {
     protected val ledgerServices = MockServices(

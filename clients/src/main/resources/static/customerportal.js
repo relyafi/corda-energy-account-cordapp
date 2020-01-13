@@ -111,9 +111,84 @@ class AccountPersonalDetails extends React.Component {
                               mode="View"
                               onChange={this.onChange}/>
             </Form>
+            <ButtonGroup className="mx-n1">
+                <Button variant="dark"
+                        onClick={this.props.onAccountModifyRequest}>Update Details</Button>
+            </ButtonGroup>
             </Card.Body>
             </Card>
         )
+    }
+}
+
+class AccountModifyDialog extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            customerDetails: this.props.accountDetails.customerDetails
+        }
+
+        this.onChange = this.onChange.bind(this);
+        this.handleClose = this.handleClose.bind(this);
+    }
+
+    render() {
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.actionState == "Modify"}>
+                    <Modal.Header>
+                        <Modal.Title>Update Details</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                         <CustomerForm customerDetails={this.state.customerDetails}
+                                       mode={this.props.actionState}
+                                       onChange={this.onChange}/>
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         <div className="text-danger">Account modification failed</div>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Account was successfully modified."
+                        }
+                    </Modal.Body>
+                    <Modal.Footer>
+                        { (this.props.actionResult != "OK") &&
+                            <ButtonGroup>
+                                <Button variant="success"
+                                        disabled={this.props.actionResult == "PENDING"}
+                                        onClick={() =>
+                                            this.props.onModifyConfirm(this.state.customerDetails)}>
+                                    Update
+                                </Button>
+                                <Button variant="secondary" onClick={this.handleClose}>
+                                    Cancel
+                                </Button>
+                            </ButtonGroup>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                              <Button onClick={this.handleClose}>
+                                  Close
+                              </Button>
+                        }
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    onChange(field, value) {
+        this.setState(
+            {customerDetails: Object.assign(
+                 {},
+                 this.state.customerDetails,
+                 {[field]: value})
+            });
+    }
+
+    handleClose() {
+        this.props.onClose();
     }
 }
 
@@ -128,13 +203,13 @@ class AccountTransferPanel extends React.Component {
         return (
             <Card>
                 <Card.Body>
-                    <Form inline onSubmit={this.handleSubmit}>
+                    <Form onSubmit={this.handleSubmit}>
                         <Form.Row>
-                            <Form.Label className="font-weight-bolder mr-2">
+                            <Form.Label className="font-weight-bolder">
                                 Transfer account to
                             </Form.Label>
-                            <Form.Control as="select"
-                                          className="mx-2"
+                            <Form.Control className="my-2"
+                                          as="select"
                                           name="newSupplier"
                                           ref="newSupplier">
                                 {
@@ -144,7 +219,10 @@ class AccountTransferPanel extends React.Component {
                                             it.legalIdentitiesAndCerts[0]}</option>)
                                 }
                             </Form.Control>
-                            <Button variant="dark"
+                        </Form.Row>
+                        <Form.Row>
+                            <Button className="mt-2"
+                                    variant="dark"
                                     disabled={this.props.transferResult == "PENDING"}
                                     type='submit'>Change Supplier</Button>
                         </Form.Row>
@@ -220,8 +298,11 @@ class App extends React.Component {
         this.getNetworkMap = this.getNetworkMap.bind(this);
         this.getOtherSuppliers = this.getOtherSuppliers.bind(this);
         this.getAccount = this.getAccount.bind(this);
+        this.accountModifyRequest = this.accountModifyRequest.bind(this);
+        this.modifyAccount = this.modifyAccount.bind(this);
         this.transferAccount = this.transferAccount.bind(this);
-        this.onTransferAccountClose = this.onTransferAccountClose.bind(this)
+        this.onTransferAccountClose = this.onTransferAccountClose.bind(this);
+        this.finishAction = this.finishAction.bind(this);
     }
 
     componentDidMount() {
@@ -256,6 +337,10 @@ class App extends React.Component {
         this.setState({otherSuppliers: otherSuppliers});
     }
 
+    accountModifyRequest(event) {
+        this.setState({currentAction: "Modify" })
+    }
+
     getAccount(accountId) {
         var request = '/api/getAccount?id=' + accountId
         return fetch(request)
@@ -267,6 +352,29 @@ class App extends React.Component {
                 console.info(error);
                 this.setState({lookupState: "FAIL"})
             });
+    }
+
+     modifyAccount(customerDetails) {
+        this.setState({actionResult: "PENDING"})
+        return fetch('/api/modifyAccount', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: this.state.accountDetails.linearId.id,
+                customerDetails: customerDetails
+            })
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
     }
 
     transferAccount(accountId, newSupplier) {
@@ -294,6 +402,12 @@ class App extends React.Component {
         this.setState({transferResult: ""})
     }
 
+    finishAction() {
+        this.setState({currentAction: "",
+                       actionResult: ""})
+        this.getAccount(this.state.accountDetails.linearId.id)
+    }
+
     render() {
         let account = this.state.accountDetails;
 
@@ -311,7 +425,14 @@ class App extends React.Component {
                     <NavigationBar nodeInfo={this.state.nodeInfo}/>
                     <Tabs defaultActiveKey="details" id="main-tabs">
                         <Tab eventKey="details" title="My Details">
-                            <AccountPersonalDetails accountDetails={account}/>
+                            <AccountPersonalDetails accountDetails={account}
+                                                    onAccountModifyRequest={this.accountModifyRequest}/>
+                            <AccountModifyDialog actionState={this.state.currentAction}
+                                                 actionResult={this.state.actionResult}
+                                                 accountDetails={this.state.accountDetails}
+                                                 onClose={this.finishAction}
+                                                 onModifyConfirm={(accountDetails) =>
+                                                     this.modifyAccount(accountDetails)}/>
                         </Tab>
                         <Tab eventKey="transfer" title="Transfer Account">
                             <AccountTransferPanel accountId={account.linearId.id}
