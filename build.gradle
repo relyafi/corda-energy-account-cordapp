@@ -168,7 +168,7 @@ task prepareLocalNodes(type: net.corda.plugins.Cordform,
 
 task prepareDockerNodes(type: net.corda.plugins.Dockerform,
                         group: "deployment",
-                        dependsOn: ['jar']) {
+                        dependsOn: ['jar', 'clients:bootJar']) {
 
     def nodesFolder = new File("build/nodes")
 

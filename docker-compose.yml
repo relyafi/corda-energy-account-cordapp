@@ -1,0 +1,99 @@
+version: '3'
+services:
+  notary:
+    image: corda/corda-zulu-java1.8-4.3
+    volumes:
+    - ./build/nodes/Notary/node.conf:/etc/corda/node.conf
+    - ./build/nodes/Notary/certificates:/opt/corda/certificates
+    - ./build/nodes/Notary/logs:/opt/corda/logs
+    - ./build/nodes/Notary/persistence:/opt/corda/persistence
+    - ./build/nodes/Notary/cordapps:/opt/corda/cordapps
+    - ./build/nodes/Notary/network-parameters:/opt/corda/network-parameters
+    - ./build/nodes/Notary/additional-node-infos:/opt/corda/additional-node-infos
+    - ./build/nodes/Notary/drivers:/opt/corda/drivers
+    ports:
+    - 10113:10113
+  government-regulator:
+    image: corda/corda-zulu-java1.8-4.3
+    volumes:
+    - ./build/nodes/GovernmentRegulator/node.conf:/etc/corda/node.conf
+    - ./build/nodes/GovernmentRegulator/certificates:/opt/corda/certificates
+    - ./build/nodes/GovernmentRegulator/logs:/opt/corda/logs
+    - ./build/nodes/GovernmentRegulator/persistence:/opt/corda/persistence
+    - ./build/nodes/GovernmentRegulator/cordapps:/opt/corda/cordapps
+    - ./build/nodes/GovernmentRegulator/network-parameters:/opt/corda/network-parameters
+    - ./build/nodes/GovernmentRegulator/additional-node-infos:/opt/corda/additional-node-infos
+    - ./build/nodes/GovernmentRegulator/drivers:/opt/corda/drivers
+    ports:
+    - 10123:10123
+  government-regulator-web:
+    image: openjdk:8
+    depends_on:
+    - government-regulator
+    volumes:
+    - ./clients/build/libs/clients.jar:/clients.jar
+    - ./third-party/utils/wait-for-it:/wait-for-it
+    command: >
+        ./wait-for-it -t 300 government-regulator:10003 -- 
+            java -jar /clients.jar --server.port=10052 
+                                   --corda.host=government-regulator:10003
+                                   --corda.user=user1
+                                   --corda.password=test
+    ports:
+    - 10052:10052
+  british-energy:
+    image: corda/corda-zulu-java1.8-4.3
+    volumes:
+    - ./build/nodes/BritishEnergy/node.conf:/etc/corda/node.conf
+    - ./build/nodes/BritishEnergy/certificates:/opt/corda/certificates
+    - ./build/nodes/BritishEnergy/logs:/opt/corda/logs
+    - ./build/nodes/BritishEnergy/persistence:/opt/corda/persistence
+    - ./build/nodes/BritishEnergy/cordapps:/opt/corda/cordapps
+    - ./build/nodes/BritishEnergy/network-parameters:/opt/corda/network-parameters
+    - ./build/nodes/BritishEnergy/additional-node-infos:/opt/corda/additional-node-infos
+    - ./build/nodes/BritishEnergy/drivers:/opt/corda/drivers
+    ports:
+    - 10133:10133
+  british-energy-web:
+    image: openjdk:8
+    depends_on:
+    - british-energy
+    volumes:
+    - ./clients/build/libs/clients.jar:/clients.jar
+    - ./third-party/utils/wait-for-it:/wait-for-it
+    command: >
+        ./wait-for-it -t 300 british-energy:10003 -- 
+            java -jar /clients.jar --server.port=10050
+                                   --corda.host=british-energy:10003
+                                   --corda.user=user1
+                                   --corda.password=test
+    ports:
+    - 10050:10050
+  uk-power:
+    image: corda/corda-zulu-java1.8-4.3
+    volumes:
+    - ./build/nodes/UKPower/node.conf:/etc/corda/node.conf
+    - ./build/nodes/UKPower/certificates:/opt/corda/certificates
+    - ./build/nodes/UKPower/logs:/opt/corda/logs
+    - ./build/nodes/UKPower/persistence:/opt/corda/persistence
+    - ./build/nodes/UKPower/cordapps:/opt/corda/cordapps
+    - ./build/nodes/UKPower/network-parameters:/opt/corda/network-parameters
+    - ./build/nodes/UKPower/additional-node-infos:/opt/corda/additional-node-infos
+    - ./build/nodes/UKPower/drivers:/opt/corda/drivers
+    ports:
+    - 10143:10143
+  uk-power-web:
+    image: openjdk:8
+    depends_on:
+    - uk-power
+    volumes:
+    - ./clients/build/libs/clients.jar:/clients.jar
+    - ./third-party/utils/wait-for-it:/wait-for-it
+    command: >
+        ./wait-for-it -t 300 uk-power:10003 -- 
+            java -jar /clients.jar --server.port=10051
+                                   --corda.host=uk-power:10003
+                                   --corda.user=user1
+                                   --corda.password=test
+    ports:
+    - 10051:10051
