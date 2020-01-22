@@ -9,9 +9,6 @@ import net.corda.core.utilities.ProgressTracker
 import net.corda.examples.energyaccount.contracts.AccountContract
 import net.corda.examples.energyaccount.contracts.CustomerDetails
 
-// *********
-// * Flows *
-// *********
 @InitiatingFlow
 @StartableByRPC
 class ModifyAccountFlowInitiator(

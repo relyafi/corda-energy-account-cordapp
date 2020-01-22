@@ -1,11 +1,13 @@
 package net.corda.examples.energyaccount.contracts
 
 import net.corda.core.contracts.*
+import net.corda.core.contracts.Requirements.using
 import net.corda.core.identity.Party
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
 import java.security.PublicKey
 import java.time.LocalDate
+import java.time.LocalDateTime
 
 class AccountContract : Contract {
 
@@ -14,6 +16,7 @@ class AccountContract : Contract {
         class Modify: Commands, TypeOnlyCommandData()
         class Transfer: Commands, TypeOnlyCommandData()
         class Delete: Commands, TypeOnlyCommandData()
+        class MeterRead: Commands, TypeOnlyCommandData()
     }
 
     companion object {
@@ -69,6 +72,19 @@ class AccountContract : Contract {
                             account.state.data.regulator.owningKey,
                             account.state.data.supplier.owningKey)))
         }
+
+        fun generateMeterReading(
+                notary: Party,
+                account: StateAndRef<AccountState>,
+                units: Int,
+                dateTime: LocalDateTime?) : TransactionBuilder {
+            return TransactionBuilder(notary)
+                    .addInputState(account)
+                    .addOutputState(account.state.data.withNewReading(units, dateTime))
+                    .addCommand(Command(Commands.MeterRead(),
+                                listOf(account.state.data.regulator.owningKey,
+                                       account.state.data.supplier.owningKey)))
+        }
     }
 
     override fun verify(tx: LedgerTransaction) {
@@ -80,6 +96,7 @@ class AccountContract : Contract {
             is Commands.Modify -> validateModify(tx, signers)
             is Commands.Transfer -> validateTransfer(tx, signers)
             is Commands.Delete -> validateDelete(tx, signers)
+            is Commands.MeterRead -> validateMeterReading(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command")
         }
     }
@@ -105,6 +122,7 @@ class AccountContract : Contract {
                     signers.containsAll(keysFromParticipants(outState))
             "The regulator has signed the transaction" using
                     signers.contains(outState.regulator.owningKey)
+            "There are no meter readings" using outState.meterReadings.isEmpty()
         }
     }
 
@@ -124,6 +142,8 @@ class AccountContract : Contract {
                     inState.linearId.equals(outState.linearId)
             "The old and new supplier must be the same" using
                     inState.supplier.hashCode().equals(outState.supplier.hashCode())
+            "The meter readings must be the same" using
+                    inState.meterReadings.equals(outState.meterReadings)
             "All participants have signed the transaction" using
                     signers.containsAll(keysFromParticipants(outState))
         }
@@ -163,6 +183,46 @@ class AccountContract : Contract {
                     signers.containsAll(keysFromParticipants(inState))
             "The regulator has signed the transaction" using
                     signers.contains(inState.regulator.owningKey)
+        }
+    }
+
+    private fun validateMeterReading(tx: LedgerTransaction, signers: Set<PublicKey>) {
+
+        requireThat {
+            "A single account must be consumed" using (tx.inputs.size == 1)
+            "A single account must be created" using (tx.outputs.size == 1)
+        }
+
+        val inState = tx.inputsOfType<AccountState>().single()
+        val outState = tx.outputsOfType<AccountState>().single()
+
+        requireThat {
+            "The account id must be the same" using
+                    inState.linearId.equals(outState.linearId)
+            "The old and new supplier must be the same" using
+                    inState.supplier.hashCode().equals(outState.supplier.hashCode())
+            "The customer details must be the same" using
+                    inState.customerDetails.equals(outState.customerDetails)
+            "All participants have signed the transaction" using
+                    signers.containsAll(keysFromParticipants(outState))
+            "There must be exactly one more reading" using
+                    outState.meterReadings.size.equals(inState.meterReadings.size + 1)
+        }
+
+        if (!inState.meterReadings.isEmpty()) {
+            // Validation relating to previous readings
+            "The time of the new reading must be greater than the previous reading" using
+                    outState.meterReadings.last().first.isAfter(
+                            inState.meterReadings.last().first)
+
+            // TODO: This should probably handle rollover, i.e. 99999->00000
+            "The value of the new reading must be greater than the previous reading" using
+                    (outState.meterReadings.last().second >
+                            inState.meterReadings.last().second)
+
+            "The meter reading history must be the same" using
+                    inState.meterReadings.equals(
+                            outState.meterReadings.subList(0, outState.meterReadings.size - 1))
         }
     }
 

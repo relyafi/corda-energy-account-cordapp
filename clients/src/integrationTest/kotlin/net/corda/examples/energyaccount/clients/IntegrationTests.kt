@@ -20,6 +20,7 @@ import org.hamcrest.MatcherAssert
 import org.hamcrest.text.StringContainsInOrder
 import org.junit.Test
 import java.time.LocalDate
+import java.time.LocalDateTime
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
@@ -92,11 +93,11 @@ class IntegrationTests {
 
             // Confirm that the supplier knows about only their owned accounts, and the regulator
             // knows about both
-            val (supplierA_A, supplierB_A, regulator_A) =
+            var (supplierA_A, supplierB_A, regulator_A) =
                     listOf(supplierACli, supplierBCli, regulatorCli)
                             .map { it.getAccountByLinearId(accountAId) }
 
-            val (supplierA_B, supplierB_B, regulator_B) =
+            var (supplierA_B, supplierB_B, regulator_B) =
                     listOf(supplierACli, supplierBCli, regulatorCli)
                             .map { it.getAccountByLinearId(accountBId) }
 
@@ -272,6 +273,111 @@ class IntegrationTests {
                 MatcherAssert.assertThat(
                         this.message,
                         StringContainsInOrder(listOf("Account with id ", " not found.")))
+            }
+        }
+    }
+
+    @Test
+    fun `Account integration tests - meter readings`() {
+        val user = User("user1", "test", setOf(Permissions.all()))
+        driver(DriverParameters(
+                startNodesInProcess = true,
+                isDebug = true,
+                cordappsForAllNodes = listOf(
+                        TestCordapp.findCordapp("net.corda.examples.energyaccount.contracts"),
+                        TestCordapp.findCordapp("net.corda.examples.energyaccount.flows"))
+        )) {
+            val (regulator, supplierA) = listOf(
+                    startNode(providedName = regulatorName, rpcUsers = listOf(user)),
+                    startNode(providedName = supplierAName, rpcUsers = listOf(user))
+            ).map { (it.getOrThrow() as InProcess) }
+
+            val (regulatorCli, supplierACli) =
+                    listOf(regulator, supplierA).map {
+                        val client = CordaRPCClient(it.rpcAddress)
+                        client.start(user.username, user.password)
+                        val api = AccountClientApi()
+                        api.rpc = it.rpc
+                        api
+                    }
+
+            // Create account
+            val accountAId = supplierACli.createAccount(customerA).linearId
+            log.info("Created account A with ID $accountAId")
+
+            var (supplierA_A, regulator_A) =
+                    listOf(supplierACli, regulatorCli)
+                            .map { it.getAccountByLinearId(accountAId) }
+
+            // Submit first meter reading for account A
+            assertThat(supplierA_A?.meterReadings?.size, equalTo(0))
+            supplierACli.meterRead(
+                    accountAId,
+                    1000,
+                    LocalDateTime.parse("2018-12-03T10:15:30"))
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.meterReadings?.size, equalTo(1))
+            assertThat(
+                    supplierA_A?.meterReadings?.get(0)?.first.toString(),
+                    equalTo("2018-12-03T10:15:30"))
+            assertThat(supplierA_A?.meterReadings?.get(0)?.second, equalTo(1000))
+
+            assertThat(
+                    regulator_A?.meterReadings?.hashCode(),
+                    equalTo(supplierA_A?.meterReadings?.hashCode()))
+
+            // Submit second meter reading for account A
+            supplierACli.meterRead(
+                    accountAId,
+                    1004,
+                    LocalDateTime.parse("2018-12-03T11:15:30"))
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.meterReadings?.size, equalTo(2))
+            assertThat(
+                    supplierA_A?.meterReadings?.get(0)?.first.toString(),
+                    equalTo("2018-12-03T10:15:30"))
+            assertThat(supplierA_A?.meterReadings?.get(0)?.second, equalTo(1000))
+            assertThat(
+                    supplierA_A?.meterReadings?.get(1)?.first.toString(),
+                    equalTo("2018-12-03T11:15:30"))
+            assertThat(supplierA_A?.meterReadings?.get(1)?.second, equalTo(1004))
+
+            assertThat(
+                    regulator_A?.meterReadings?.hashCode(),
+                    equalTo(supplierA_A?.meterReadings?.hashCode()))
+
+            // Invalid meter reading - previous date
+            with(assertFailsWith<FlowException> {
+                supplierACli.meterRead(
+                        accountAId,
+                        1005,
+                        LocalDateTime.parse("2018-11-03T11:15:30")) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf(
+                                "Failed requirement: The time of the " +
+                                        "new reading must be greater than the previous reading")))
+            }
+
+            // Invalid meter reading - previous value
+            with(assertFailsWith<FlowException> {
+                supplierACli.meterRead(
+                        accountAId,
+                        1004,
+                        LocalDateTime.parse("2018-12-04T12:15:30")) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf(
+                                "Failed requirement: The value of the " +
+                                        "new reading must be greater than the previous reading")))
             }
         }
     }

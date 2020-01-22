@@ -3,14 +3,18 @@ package net.corda.examples.energyaccount.flows
 import co.paralleluniverse.fibers.Suspendable
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.*
+import net.corda.core.node.StatesToRecord
 import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.examples.energyaccount.contracts.AccountContract
+import java.time.LocalDateTime
 
 @InitiatingFlow
 @StartableByRPC
-class DeleteAccountFlowInitiator(
-        private val accountLinearId: UniqueIdentifier) : AccountBaseFlow() {
+class MeterReadAccountFlowInitiator(
+        private val accountLinearId: UniqueIdentifier,
+        private val newValue: Int,
+        private val dateTime: LocalDateTime?) : AccountBaseFlow() {
 
     companion object {
         object RETRIEVING : ProgressTracker.Step("Retrieving current account state.")
@@ -39,7 +43,11 @@ class DeleteAccountFlowInitiator(
         val account = getAccountByLinearId(accountLinearId)
 
         progressTracker.currentStep = BUILDING
-        val utx = AccountContract.generateAccountDelete(notary, account)
+        val utx = AccountContract.generateMeterReading(
+                notary,
+                account,
+                newValue,
+                dateTime)
         utx.verify(serviceHub)
 
         progressTracker.currentStep = SIGNING
@@ -49,21 +57,23 @@ class DeleteAccountFlowInitiator(
         // Need the regulator to approve this action
         val regulatorSession = initiateFlow(account.state.data.regulator)
 
+        val sessions = listOf(regulatorSession)
+
         val fstx = subFlow(CollectSignaturesFlow(
                 pstx,
-                listOf(regulatorSession),
+                sessions,
                 progressTracker = COLLECTING.childProgressTracker()))
 
         progressTracker.currentStep = FINALISING
         return subFlow(FinalityFlow(
                 fstx,
-                listOf(regulatorSession),
+                sessions,
                 FINALISING.childProgressTracker()))
     }
 }
 
-@InitiatedBy(DeleteAccountFlowInitiator::class)
-class DeleteAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
+@InitiatedBy(MeterReadAccountFlowInitiator::class)
+class MeterReadAccountFlowResponder(val counterpartySession: FlowSession) : AccountBaseFlow() {
     @Suspendable
     override fun call() : SignedTransaction {
 
@@ -75,8 +85,15 @@ class DeleteAccountFlowResponder(val counterpartySession: FlowSession) : Account
 
         val txId = subFlow(signTransactionFlow).id
 
-        // Regulator will implicitly record state consumption, since it will be aware of the
-        // previous state of the account despite not being a participant in the delete txn
-        return subFlow(ReceiveFinalityFlow(counterpartySession, txId))
+        /* The regulator explicitly records the state despite not being a participant so they can
+         * maintain an audit trail of all important actions, so we specify ALL_VISIBLE to achieve
+         * this.*/
+        return subFlow(ReceiveFinalityFlow(
+                counterpartySession,
+                txId,
+                // TODO: Need to find a way of identifying that we're the regulator without \
+                //       hard-coding an organisation name
+                if (ourIdentity.name.organisation == "Government Regulator")
+                    StatesToRecord.ALL_VISIBLE else StatesToRecord.ONLY_RELEVANT))
     }
 }

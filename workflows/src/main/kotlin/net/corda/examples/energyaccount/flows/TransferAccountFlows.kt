@@ -9,9 +9,6 @@ import net.corda.core.transactions.SignedTransaction
 import net.corda.core.utilities.ProgressTracker
 import net.corda.examples.energyaccount.contracts.AccountContract
 
-// *********
-// * Flows *
-// *********
 @InitiatingFlow
 @StartableByRPC
 class TransferAccountFlowInitiator(

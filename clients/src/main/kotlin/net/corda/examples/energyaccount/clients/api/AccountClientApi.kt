@@ -11,12 +11,10 @@ import net.corda.core.node.services.vault.QueryCriteria
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.contracts.AccountState
 import net.corda.examples.energyaccount.contracts.CustomerDetails
-import net.corda.examples.energyaccount.flows.CreateAccountFlowInitiator
-import net.corda.examples.energyaccount.flows.DeleteAccountFlowInitiator
-import net.corda.examples.energyaccount.flows.ModifyAccountFlowInitiator
-import net.corda.examples.energyaccount.flows.TransferAccountFlowInitiator
+import net.corda.examples.energyaccount.flows.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
+import java.time.LocalDateTime
 
 @RestController
 @RequestMapping("/api")
@@ -30,6 +28,9 @@ class AccountClientApi() {
     data class ModifyTxnBody(val accountId: String, val customerDetails: CustomerDetails)
     data class TransferTxnBody(val accountId: String, val toSupplier: String)
     data class DeleteTxnBody(val accountId: String)
+    data class MeterReadTxnBody(val accountId: String,
+                                val units: Int,
+                                val dateTime: LocalDateTime?)
 
     fun createAccount(customerDetails: CustomerDetails) : AccountState {
 
@@ -67,6 +68,13 @@ class AccountClientApi() {
     fun deleteAccount(accountLinearId: UniqueIdentifier) {
 
        rpc.startFlow(::DeleteAccountFlowInitiator, accountLinearId).returnValue.getOrThrow()
+    }
+
+    fun meterRead(accountLinearId: UniqueIdentifier,
+                  units: Int,
+                  dateTime: LocalDateTime?) {
+        rpc.startFlow(::MeterReadAccountFlowInitiator, accountLinearId, units, dateTime)
+                .returnValue.getOrThrow()
     }
 
     fun getAccountByLinearId(id: UniqueIdentifier) : AccountState? {
@@ -142,6 +150,19 @@ class AccountClientApi() {
 
         try {
             deleteAccount(uid)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
+    }
+
+    @PatchMapping(value = ["/submitMeterRead"])
+    fun meterRead(@RequestBody body: MeterReadTxnBody) : String {
+        val uid = UniqueIdentifier.fromString(body.accountId)
+
+        try {
+            meterRead(uid, body.units, body.dateTime)
         } catch (e : FlowException) {
             return e.message!!
         }

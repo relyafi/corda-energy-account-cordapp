@@ -13,10 +13,15 @@ let ListGroup = ReactBootstrap.ListGroup;
 let Modal = ReactBootstrap.Modal;
 let NavBar = ReactBootstrap.Navbar;
 let Row = ReactBootstrap.Row;
-let Table = ReactBootstrap.BootstrapTable;
+let Table = ReactBootstrap.Table;
 let Tab = ReactBootstrap.Tab;
 let Tabs = ReactBootstrap.Tabs;
 let Text = ReactBootstrap.Text;
+
+function formatDate(string){
+    var options = { dateStyle: 'long', timeStyle: 'medium' };
+    return new Date(string).toLocaleString([],options);
+}
 
 function getIdentityDisplayName(X500Name) {
     return X500Name.match("(?<=O=).*(?=, L=)")[0]
@@ -126,9 +131,22 @@ class AccountViewDialog extends React.Component {
                         <Modal.Title>Account Details</Modal.Title>
                     </Modal.Header>
                     <Modal.Body>
-                        <CustomerForm customerDetails={this.props.accountDetails.customerDetails}
-                                      mode={this.props.actionState}
-                                      onChange={this.onChange}/>
+                        <Tabs defaultActiveKey="details">
+                            <Tab className="mt-2 ml-2"
+                                 eventKey="details"
+                                 title="Customer Details">
+                                <CustomerForm
+                                    customerDetails={this.props.accountDetails.customerDetails}
+                                    mode={this.props.actionState}
+                                    onChange={this.onChange}/>
+                            </Tab>
+                            <Tab className="mt-2"
+                                 eventKey="readings"
+                                 title="Meter Readings">
+                                <MeterReadingTable
+                                    meterReadings={this.props.accountDetails.meterReadings} />
+                            </Tab>
+                        </Tabs>
                     </Modal.Body>
                     <Modal.Footer>
                           <Button onClick={this.handleClose}>
@@ -146,5 +164,33 @@ class AccountViewDialog extends React.Component {
 
     handleClose() {
         this.props.onClose();
+    }
+}
+
+class MeterReadingTable extends React.Component {
+    constructor(props) {
+        super(props)
+    }
+
+    render() {
+        return (
+            <Table striped>
+                <thead>
+                    <tr>
+                    <th style={{width:"40ch"}}>Date</th>
+                    <th>Reading</th>
+                    </tr>
+                </thead>
+                <tbody>
+                { this.props.meterReadings.map(
+                    reading =>
+                        <tr>
+                          <td>{formatDate(reading.first)}</td>
+                          <td>{String(reading.second).padStart(5, '0')}</td>
+                        </tr>
+                )}
+                </tbody>
+            </Table>
+        )
     }
 }

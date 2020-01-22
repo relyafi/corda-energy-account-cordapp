@@ -192,6 +192,107 @@ class AccountModifyDialog extends React.Component {
     }
 }
 
+class MeterReadPanel extends React.Component {
+    constructor(props) {
+        super(props)
+    }
+
+    render() {
+        return (
+            <Card>
+            <Card.Body>
+            { this.props.accountDetails.meterReadings.length == 0 &&
+            <p>No meter readings exist</p>
+            }
+            { this.props.accountDetails.meterReadings.length != 0 &&
+            <MeterReadingTable meterReadings={this.props.accountDetails.meterReadings} />
+            }
+            <ButtonGroup className="mx-n1">
+                <Button variant="dark"
+                        onClick={this.props.onMeterReadRequest}>Submit Reading</Button>
+            </ButtonGroup>
+            </Card.Body>
+            </Card>
+        )
+    }
+}
+
+class MeterReadDialog extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            reading: ""
+        }
+
+        this.handleClose = this.handleClose.bind(this);
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    render() {
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.actionState == "MeterRead"}>
+                    <Modal.Header>
+                        <Modal.Title>Meter Reading</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                        <Form.Group as={Row}>
+                            <Form.Label xs="auto"
+                                        className="font-weight-bolder"
+                                        column
+                                        span="false">Reading
+                            </Form.Label>
+                            <Col>
+                                <Form.Control className="readingField"
+                                              placeholder={"00000"}
+                                              onChange={this.handleChange}
+                                              maxLength="5"/>
+                            </Col>
+                        </Form.Group>
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         <div className="text-danger">Invalid value</div>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Meter reading successfully submitted."
+                        }
+                    </Modal.Body>
+                    <Modal.Footer>
+                        { (this.props.actionResult != "OK") &&
+                            <ButtonGroup>
+                                <Button variant="success"
+                                        disabled={this.props.actionResult == "PENDING"}
+                                        onClick={() =>
+                                            this.props.onMeterReadSubmit(this.state.reading)}>
+                                    Submit
+                                </Button>
+                                <Button variant="secondary" onClick={this.handleClose}>
+                                    Cancel
+                                </Button>
+                            </ButtonGroup>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                              <Button onClick={this.handleClose}>
+                                  Close
+                              </Button>
+                        }
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    handleClose() {
+        this.props.onClose();
+    }
+
+    handleChange(event) {
+        this.setState({reading: event.target.value})
+    }
+}
+
 class AccountTransferPanel extends React.Component {
     constructor(props) {
         super(props)
@@ -299,7 +400,9 @@ class App extends React.Component {
         this.getOtherSuppliers = this.getOtherSuppliers.bind(this);
         this.getAccount = this.getAccount.bind(this);
         this.accountModifyRequest = this.accountModifyRequest.bind(this);
+        this.meterReadRequest = this.meterReadRequest.bind(this);
         this.modifyAccount = this.modifyAccount.bind(this);
+        this.meterRead = this.meterRead.bind(this);
         this.transferAccount = this.transferAccount.bind(this);
         this.onTransferAccountClose = this.onTransferAccountClose.bind(this);
         this.finishAction = this.finishAction.bind(this);
@@ -341,6 +444,10 @@ class App extends React.Component {
         this.setState({currentAction: "Modify" })
     }
 
+    meterReadRequest(event) {
+        this.setState({currentAction: "MeterRead" })
+    }
+
     getAccount(accountId) {
         var request = '/api/getAccount?id=' + accountId
         return fetch(request)
@@ -365,6 +472,29 @@ class App extends React.Component {
             body: JSON.stringify({
                 accountId: this.state.accountDetails.linearId.id,
                 customerDetails: customerDetails
+            })
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
+    }
+
+    meterRead(accountId, reading) {
+        this.setState({actionResult: "PENDING"})
+        return fetch('/api/submitMeterRead', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: accountId,
+                units: reading
             })
         })
             .then(result => result.text())
@@ -429,10 +559,20 @@ class App extends React.Component {
                                                     onAccountModifyRequest={this.accountModifyRequest}/>
                             <AccountModifyDialog actionState={this.state.currentAction}
                                                  actionResult={this.state.actionResult}
-                                                 accountDetails={this.state.accountDetails}
+                                                 accountDetails={account}
                                                  onClose={this.finishAction}
                                                  onModifyConfirm={(accountDetails) =>
                                                      this.modifyAccount(accountDetails)}/>
+                        </Tab>
+                        <Tab eventKey="meterread" title="Meter Readings">
+                            <MeterReadPanel accountDetails={account}
+                                            onMeterReadRequest={this.meterReadRequest} />
+                            <MeterReadDialog actionState={this.state.currentAction}
+                                             actionResult={this.state.actionResult}
+                                             onClose={this.finishAction}
+                                             onMeterReadSubmit={(reading) =>
+                                                     this.meterRead(account.linearId.id,
+                                                                    reading)}/>
                         </Tab>
                         <Tab eventKey="transfer" title="Transfer Account">
                             <AccountTransferPanel accountId={account.linearId.id}
