@@ -55,6 +55,7 @@ class AccountFinder extends React.Component {
                                       placeholder='Enter your 36 character account id'
                                       onChange={this.handleIdChange}/>
                         <Button variant="dark"
+                                className="ml-1"
                                 type='submit'
                                 disabled={!this.state.submitIsEnabled}>Submit</Button>
                         </Form.Row>
@@ -293,6 +294,126 @@ class MeterReadDialog extends React.Component {
     }
 }
 
+class BillingPanel extends React.Component {
+    constructor(props) {
+        super(props)
+    }
+
+    render() {
+
+        var entries = this.props.accountDetails.billingEntries
+
+        return (
+            <Card>
+            <Card.Body>
+            { this.props.accountDetails.billingEntries.length != 0 &&
+            <BillingTable billingEntries={this.props.accountDetails.billingEntries} />
+            }
+            <Form.Group as={Row} className="mb-n1">
+                <Form.Label xs="auto"
+                            className="font-weight-bolder"
+                            column
+                            span="false">Outstanding balance: {formatCurrency(getCurrentBalance(entries))}
+                </Form.Label>
+                <Col>
+                    <ButtonGroup className="mx-n1">
+                        <Button variant="dark"
+                                onClick={this.props.onPaymentRequest}>Make Payment</Button>
+                    </ButtonGroup>
+                </Col>
+            </Form.Group>
+            </Card.Body>
+            </Card>
+        )
+    }
+}
+
+class PaymentDialog extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            amount: 0.00
+        }
+
+        this.handleClose = this.handleClose.bind(this);
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    render() {
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.actionState == "Payment"}>
+                    <Modal.Header>
+                        <Modal.Title>Make Payment</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                        <Form.Group as={Row}>
+                            <Form.Label xs="auto"
+                                        className="font-weight-bolder"
+                                        column
+                                        span="false">Amount
+                            </Form.Label>
+                            <Col>
+                                <Form.Control xs="auto"
+                                              className="amountField"
+                                              placeholder={"0.00"}
+                                              type="number"
+                                              step="0.01"
+                                              min="0.01"
+                                              max="999.99"
+                                              required
+                                              onChange={this.handleChange}/>
+                            </Col>
+                        </Form.Group>
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         <div className="text-danger">Payment failed</div>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Payment successfully processed."
+                        }
+                    </Modal.Body>
+                    <Modal.Footer>
+                        { (this.props.actionResult != "OK") &&
+                            <ButtonGroup>
+                                <Button variant="success"
+                                        disabled={this.props.actionResult == "PENDING" ||
+                                                  this.state.amount == ""}
+                                        onClick={() =>
+                                            this.props.onPaymentSubmit(this.state.amount)}>
+                                    Submit
+                                </Button>
+                                <Button variant="secondary" onClick={this.handleClose}>
+                                    Cancel
+                                </Button>
+                            </ButtonGroup>
+                        }
+                        { (this.props.actionResult == "OK") &&
+                              <Button onClick={this.handleClose}>
+                                  Close
+                              </Button>
+                        }
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    handleClose() {
+        this.props.onClose();
+    }
+
+    handleChange(event) {
+        if ( event.target.value > 0 && event.target.value < 1000 ) {
+            this.setState({amount: event.target.value})
+        } else {
+            this.setState({amount: 0.00})
+        }
+    }
+}
+
 class AccountTransferPanel extends React.Component {
     constructor(props) {
         super(props)
@@ -401,8 +522,10 @@ class App extends React.Component {
         this.getAccount = this.getAccount.bind(this);
         this.accountModifyRequest = this.accountModifyRequest.bind(this);
         this.meterReadRequest = this.meterReadRequest.bind(this);
+        this.paymentRequest = this.paymentRequest.bind(this);
         this.modifyAccount = this.modifyAccount.bind(this);
         this.meterRead = this.meterRead.bind(this);
+        this.payment = this.payment.bind(this);
         this.transferAccount = this.transferAccount.bind(this);
         this.onTransferAccountClose = this.onTransferAccountClose.bind(this);
         this.finishAction = this.finishAction.bind(this);
@@ -446,6 +569,10 @@ class App extends React.Component {
 
     meterReadRequest(event) {
         this.setState({currentAction: "MeterRead" })
+    }
+
+    paymentRequest(event) {
+        this.setState({currentAction: "Payment" })
     }
 
     getAccount(accountId) {
@@ -495,6 +622,32 @@ class App extends React.Component {
             body: JSON.stringify({
                 accountId: accountId,
                 units: reading
+            })
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
+    }
+
+    payment(accountId, amount) {
+        this.setState({actionResult: "PENDING"})
+        amount = amount * -1
+
+        return fetch('/api/submitBillingAdjust', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: accountId,
+                description: "Payment received",
+                amount: amount
             })
         })
             .then(result => result.text())
@@ -573,6 +726,16 @@ class App extends React.Component {
                                              onMeterReadSubmit={(reading) =>
                                                      this.meterRead(account.linearId.id,
                                                                     reading)}/>
+                        </Tab>
+                        <Tab eventKey="billing" title="Billing">
+                            <BillingPanel accountDetails={account}
+                                          onPaymentRequest={this.paymentRequest} />
+                            <PaymentDialog actionState={this.state.currentAction}
+                                           actionResult={this.state.actionResult}
+                                           onClose={this.finishAction}
+                                           onPaymentSubmit={(amount) =>
+                                               this.payment(account.linearId.id,
+                                                            amount)}/>
                         </Tab>
                         <Tab eventKey="transfer" title="Transfer Account">
                             <AccountTransferPanel accountId={account.linearId.id}

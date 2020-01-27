@@ -10,6 +10,7 @@ import net.corda.core.utilities.contextLogger
 import net.corda.core.utilities.getOrThrow
 import net.corda.examples.energyaccount.clients.api.AccountClientApi
 import net.corda.examples.energyaccount.contracts.CustomerDetails
+import net.corda.examples.energyaccount.flows.BillingEntryAccountFlowInitiator
 import net.corda.node.services.Permissions
 import net.corda.testing.driver.DriverParameters
 import net.corda.testing.driver.InProcess
@@ -17,8 +18,10 @@ import net.corda.testing.driver.driver
 import net.corda.testing.node.TestCordapp
 import net.corda.testing.node.User
 import org.hamcrest.MatcherAssert
+import org.hamcrest.number.BigDecimalCloseTo
 import org.hamcrest.text.StringContainsInOrder
 import org.junit.Test
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.test.assertFailsWith
@@ -58,6 +61,8 @@ class IntegrationTests {
             "3 Poultry Lane",
             "01234 567890",
             "charlie.chapman@live.com")
+
+    private val EPSILON = BigDecimal(1E-10)
 
     @Test
     fun `Account integration tests - create, modify, transfer, delete`() {
@@ -278,7 +283,7 @@ class IntegrationTests {
     }
 
     @Test
-    fun `Account integration tests - meter readings`() {
+    fun `Account integration tests - meter readings and billing`() {
         val user = User("user1", "test", setOf(Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = true,
@@ -305,9 +310,30 @@ class IntegrationTests {
             val accountAId = supplierACli.createAccount(customerA).linearId
             log.info("Created account A with ID $accountAId")
 
-            var (supplierA_A, regulator_A) =
-                    listOf(supplierACli, regulatorCli)
-                            .map { it.getAccountByLinearId(accountAId) }
+            var supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+
+            // Create bill prior to meter reading
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(0))
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    LocalDateTime.parse("2018-12-03T10:15:29"))
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            var regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(1))
+            assertThat(
+                    supplierA_A?.billingEntries?.get(0)?.eventDT.toString(),
+                    equalTo("2018-12-03T10:15:29"))
+            assertThat(supplierA_A?.billingEntries?.get(0)?.amount, equalTo(BigDecimal(0)))
+            assertThat(supplierA_A?.billingEntries?.get(0)?.balance, equalTo(BigDecimal(0)))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
 
             // Submit first meter reading for account A
             assertThat(supplierA_A?.meterReadings?.size, equalTo(0))
@@ -328,6 +354,35 @@ class IntegrationTests {
             assertThat(
                     regulator_A?.meterReadings?.hashCode(),
                     equalTo(supplierA_A?.meterReadings?.hashCode()))
+
+            // Create bill following first reading
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    LocalDateTime.parse("2018-12-03T11:15:29"))
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            // 1000 units at £0.15 per unit
+            var thisBillAmount = 1000 * 0.15
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(2))
+            assertThat(
+                    supplierA_A?.billingEntries?.get(1)?.eventDT.toString(),
+                    equalTo("2018-12-03T11:15:29"))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(1)?.amount,
+                    BigDecimalCloseTo(BigDecimal(thisBillAmount), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(1)?.balance,
+                    BigDecimalCloseTo(BigDecimal(thisBillAmount), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
 
             // Submit second meter reading for account A
             supplierACli.meterRead(
@@ -351,6 +406,35 @@ class IntegrationTests {
             assertThat(
                     regulator_A?.meterReadings?.hashCode(),
                     equalTo(supplierA_A?.meterReadings?.hashCode()))
+
+            // Create bill following second reading
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    LocalDateTime.parse("2018-12-03T12:00:00"))
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            // Delta of 4 units units at £0.15 per unit
+            thisBillAmount = 4 * 0.15
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(3))
+            assertThat(
+                    supplierA_A?.billingEntries?.get(2)?.eventDT.toString(),
+                    equalTo("2018-12-03T12:00"))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(2)?.amount,
+                    BigDecimalCloseTo(BigDecimal(thisBillAmount), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(2)?.balance,
+                    BigDecimalCloseTo(BigDecimal(150 + thisBillAmount), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
 
             // Invalid meter reading - previous date
             with(assertFailsWith<FlowException> {
@@ -379,6 +463,236 @@ class IntegrationTests {
                                 "Failed requirement: The value of the " +
                                         "new reading must be greater than the previous reading")))
             }
+
+            // Create two new readings, then bill
+            supplierACli.meterRead(accountAId, 1006, null)
+            supplierACli.meterRead(accountAId, 1007, null)
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    null)
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            // Delta of 3 units units at £0.15 per unit
+            thisBillAmount = 3 * 0.15
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(4))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(3)?.amount,
+                    BigDecimalCloseTo(BigDecimal(thisBillAmount), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(3)?.balance,
+                    BigDecimalCloseTo(BigDecimal(150.6 + thisBillAmount), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+            // Create a bill with no further readings
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    null)
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(5))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(4)?.amount,
+                    BigDecimalCloseTo(BigDecimal(0), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(4)?.balance,
+                    BigDecimalCloseTo(BigDecimal(151.05), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+            // Submit bill adjustment
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(0))
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.ADJUST,
+                    "Adjustment",
+                    BigDecimal(2.50),
+                    null)
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(6))
+
+            assertThat(
+                    supplierA_A?.billingEntries?.get(5)?.eventDescription,
+                    equalTo("Adjustment"))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(5)?.amount,
+                    BigDecimalCloseTo(BigDecimal(153.55), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(5)?.balance,
+                    BigDecimalCloseTo(BigDecimal(153.55), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+            // Make payment against account
+            supplierACli.billingEntry(
+                    accountAId,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.ADJUST,
+                    "Payment",
+                    BigDecimal(-30.00),
+                    null)
+
+            supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+            regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+            assertThat(supplierA_A?.billingEntries?.size, equalTo(7))
+
+            assertThat(
+                    supplierA_A?.billingEntries?.get(6)?.eventDescription,
+                    equalTo("Payment"))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(6)?.amount,
+                    BigDecimalCloseTo(BigDecimal(123.55), EPSILON))
+            MatcherAssert.assertThat(
+                    supplierA_A?.billingEntries?.get(6)?.balance,
+                    BigDecimalCloseTo(BigDecimal(123.55), EPSILON))
+
+            assertThat(
+                    regulator_A?.billingEntries?.hashCode(),
+                    equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+            // Invalid billing entry - previous date
+            with(assertFailsWith<FlowException> {
+                supplierACli.billingEntry(
+                        accountAId,
+                        BillingEntryAccountFlowInitiator.Companion.EntryType.ADJUST,
+                        "Payment",
+                        BigDecimal(-30.00),
+                        LocalDateTime.parse("2018-12-02T10:15:30")) }) {
+
+                MatcherAssert.assertThat(
+                        this.message,
+                        StringContainsInOrder(listOf(
+                                "Failed requirement: The time of the " +
+                                        "new entry must be greater than the previous entry")))
+            }
         }
     }
+
+    /*    @Test
+    fun `Account integration tests - billing`() {
+          val user = User("user1", "test", setOf(Permissions.all()))
+          driver(DriverParameters(
+                  startNodesInProcess = true,
+                  isDebug = true,
+                  cordappsForAllNodes = listOf(
+                          TestCordapp.findCordapp("net.corda.examples.energyaccount.contracts"),
+                          TestCordapp.findCordapp("net.corda.examples.energyaccount.flows"))
+          )) {
+              val (regulator, supplierA) = listOf(
+                      startNode(providedName = regulatorName, rpcUsers = listOf(user)),
+                      startNode(providedName = supplierAName, rpcUsers = listOf(user))
+              ).map { (it.getOrThrow() as InProcess) }
+
+              val (regulatorCli, supplierACli) =
+                      listOf(regulator, supplierA).map {
+                          val client = CordaRPCClient(it.rpcAddress)
+                          client.start(user.username, user.password)
+                          val api = AccountClientApi()
+                          api.rpc = it.rpc
+                          api
+                      }
+
+              // Create account
+              val accountAId = supplierACli.createAccount(customerA).linearId
+              log.info("Created account A with ID $accountAId")
+
+              var (supplierA_A, regulator_A) =
+                      listOf(supplierACli, regulatorCli)
+                              .map { it.getAccountByLinearId(accountAId) }
+
+              // Submit first billing event for account A
+              assertThat(supplierA_A?.billingEntries?.size, equalTo(0))
+              supplierACli.billingEntry(
+                      accountAId,
+                      "Bill",
+                      BigDecimal(25.50),
+                      LocalDateTime.parse("2018-12-03T10:15:30"))
+
+              supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+              regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+              assertThat(supplierA_A?.billingEntries?.size, equalTo(1))
+
+              assertThat(
+                      supplierA_A?.billingEntries?.get(0)?.eventDT.toString(),
+                      equalTo("2018-12-03T10:15:30"))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(0)?.eventDescription,
+                      equalTo("Bill"))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(0)?.amount,
+                      equalTo(BigDecimal(25.50)))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(0)?.balance,
+                      equalTo(BigDecimal(25.50)))
+
+              assertThat(
+                      regulator_A?.billingEntries?.hashCode(),
+                      equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+              // Make payment against account
+              supplierACli.billingEntry(
+                      accountAId,
+                      "Payment",
+                      BigDecimal(-30.00),
+                      LocalDateTime.parse("2018-12-04T10:15:30"))
+
+              supplierA_A = supplierACli.getAccountByLinearId(accountAId)
+              regulator_A = regulatorCli.getAccountByLinearId(accountAId)
+
+              assertThat(supplierA_A?.billingEntries?.size, equalTo(2))
+
+              assertThat(
+                      supplierA_A?.billingEntries?.get(1)?.eventDT.toString(),
+                      equalTo("2018-12-04T10:15:30"))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(1)?.eventDescription,
+                      equalTo("Payment"))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(1)?.amount,
+                      equalTo(BigDecimal(-30.00)))
+              assertThat(
+                      supplierA_A?.billingEntries?.get(1)?.balance,
+                      equalTo(BigDecimal(-4.50)))
+
+              assertThat(
+                      regulator_A?.billingEntries?.hashCode(),
+                      equalTo(supplierA_A?.billingEntries?.hashCode()))
+
+              // Invalid billing entry - previous date
+              with(assertFailsWith<FlowException> {
+                  supplierACli.billingEntry(
+                          accountAId,
+                          "Payment",
+                          BigDecimal(-30.00),
+                          LocalDateTime.parse("2018-12-02T10:15:30")) }) {
+
+                  MatcherAssert.assertThat(
+                          this.message,
+                          StringContainsInOrder(listOf(
+                                  "Failed requirement: The time of the " +
+                                          "new entry must be greater than the previous entry")))
+              }
+          }
+      }*/
 }

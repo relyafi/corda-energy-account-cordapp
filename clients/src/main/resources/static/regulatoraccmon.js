@@ -45,9 +45,10 @@ class AccountList extends React.Component {
                     <ListGroup.Item className="bg-light">
                         <Row className="font-weight-bolder my-n1">
                             <Col className="accountId" xs={4}>Account Id</Col>
-                            <Col className="namefield">First Name</Col>
-                            <Col className="namefield">Last Name</Col>
-                            <Col className="namefield">Supplier</Col>
+                            <Col className="nameField">First Name</Col>
+                            <Col className="nameField">Last Name</Col>
+                            <Col className="nameField">Supplier</Col>
+                            <Col className="amountField">Current Balance</Col>
                         </Row>
                     </ListGroup.Item>
                     { this.props.accounts.map(
@@ -61,10 +62,12 @@ class AccountList extends React.Component {
                                                 account.linearId.id)}>
                                 <Row className="my-n1">
                                     <Col className="accountId" xs={4}>{account.linearId.id}</Col>
-                                    <Col className="namefield">{account.customerDetails.firstName}</Col>
-                                    <Col className="namefield">{account.customerDetails.lastName}</Col>
-                                    <Col className="supplierfield">
+                                    <Col className="nameField">{account.customerDetails.firstName}</Col>
+                                    <Col className="nameField">{account.customerDetails.lastName}</Col>
+                                    <Col className="supplierField">
                                             {getIdentityDisplayName(account.supplier)}</Col>
+                                    <Col className="amountField">
+                                        {formatCurrency(getCurrentBalance(account.billingEntries))}</Col>
                                 </Row>
                             </ListGroup.Item>
                     )}
@@ -214,6 +217,13 @@ class App extends React.Component {
                 <AccountViewDialog actionState={this.state.currentAction}
                                    accountDetails={this.state.activeAccount}
                                    onClose={this.finishAction}/>
+                <BalanceAdjustDialog key={this.state.activeAccountId}
+                                     actionState={this.state.currentAction}
+                                     actionResult={this.state.actionResult}
+                                     accountDetails={this.state.activeAccount}
+                                     onClose={this.finishAction}
+                                     onAdjustSubmit={
+                                         (reason, amount) => this.adjustBalance(reason, amount)} />
             </div>
         )
     }

@@ -14,6 +14,7 @@ import net.corda.examples.energyaccount.contracts.CustomerDetails
 import net.corda.examples.energyaccount.flows.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @RestController
@@ -31,6 +32,14 @@ class AccountClientApi() {
     data class MeterReadTxnBody(val accountId: String,
                                 val units: Int,
                                 val dateTime: LocalDateTime?)
+    data class BillingAdjustTxnBody(
+            val accountId: String,
+            val description: String,
+            val amount: BigDecimal,
+            val dateTime: LocalDateTime?)
+    data class BillingEntryTxnBody(
+            val accountId: String,
+            val dateTime: LocalDateTime?)
 
     fun createAccount(customerDetails: CustomerDetails) : AccountState {
 
@@ -74,6 +83,21 @@ class AccountClientApi() {
                   units: Int,
                   dateTime: LocalDateTime?) {
         rpc.startFlow(::MeterReadAccountFlowInitiator, accountLinearId, units, dateTime)
+                .returnValue.getOrThrow()
+    }
+
+    fun billingEntry(accountLinearId: UniqueIdentifier,
+                     entryType: BillingEntryAccountFlowInitiator.Companion.EntryType,
+                     description: String?,
+                     amount: BigDecimal?,
+                     dateTime: LocalDateTime?) {
+        rpc.startFlow(
+                ::BillingEntryAccountFlowInitiator,
+                accountLinearId,
+                entryType,
+                description,
+                amount,
+                dateTime)
                 .returnValue.getOrThrow()
     }
 
@@ -163,6 +187,42 @@ class AccountClientApi() {
 
         try {
             meterRead(uid, body.units, body.dateTime)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
+    }
+
+    @PatchMapping(value = ["/submitBillingAdjust"])
+    fun billingAdjust(@RequestBody body: BillingAdjustTxnBody) : String {
+        val uid = UniqueIdentifier.fromString(body.accountId)
+
+        try {
+            billingEntry(
+                    uid,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.ADJUST,
+                    body.description,
+                    body.amount,
+                    body.dateTime)
+        } catch (e : FlowException) {
+            return e.message!!
+        }
+
+        return "OK"
+    }
+
+    @PatchMapping(value = ["/submitBillingEntry"])
+    fun billingEntry(@RequestBody body: BillingEntryTxnBody) : String {
+        val uid = UniqueIdentifier.fromString(body.accountId)
+
+        try {
+            billingEntry(
+                    uid,
+                    BillingEntryAccountFlowInitiator.Companion.EntryType.STANDARD,
+                    null,
+                    null,
+                    body.dateTime)
         } catch (e : FlowException) {
             return e.message!!
         }

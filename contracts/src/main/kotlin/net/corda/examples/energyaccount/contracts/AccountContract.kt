@@ -5,6 +5,7 @@ import net.corda.core.contracts.Requirements.using
 import net.corda.core.identity.Party
 import net.corda.core.transactions.LedgerTransaction
 import net.corda.core.transactions.TransactionBuilder
+import java.math.BigDecimal
 import java.security.PublicKey
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -17,6 +18,7 @@ class AccountContract : Contract {
         class Transfer: Commands, TypeOnlyCommandData()
         class Delete: Commands, TypeOnlyCommandData()
         class MeterRead: Commands, TypeOnlyCommandData()
+        class BillingEntry: Commands, TypeOnlyCommandData()
     }
 
     companion object {
@@ -85,6 +87,23 @@ class AccountContract : Contract {
                                 listOf(account.state.data.regulator.owningKey,
                                        account.state.data.supplier.owningKey)))
         }
+
+        fun generateBillingEntry(
+                notary: Party,
+                account: StateAndRef<AccountState>,
+                description: String,
+                amount: BigDecimal,
+                dateTime: LocalDateTime?) : TransactionBuilder {
+            return TransactionBuilder(notary)
+                    .addInputState(account)
+                    .addOutputState(account.state.data.withNewBillingEntry(
+                            description,
+                            amount,
+                            dateTime))
+                    .addCommand(Command(Commands.BillingEntry(),
+                            listOf(account.state.data.regulator.owningKey,
+                                   account.state.data.supplier.owningKey)))
+        }
     }
 
     override fun verify(tx: LedgerTransaction) {
@@ -97,6 +116,7 @@ class AccountContract : Contract {
             is Commands.Transfer -> validateTransfer(tx, signers)
             is Commands.Delete -> validateDelete(tx, signers)
             is Commands.MeterRead -> validateMeterReading(tx, signers)
+            is Commands.BillingEntry -> validateBillingEntry(tx, signers)
             else -> throw IllegalArgumentException("Unrecognised command")
         }
     }
@@ -223,6 +243,41 @@ class AccountContract : Contract {
             "The meter reading history must be the same" using
                     inState.meterReadings.equals(
                             outState.meterReadings.subList(0, outState.meterReadings.size - 1))
+        }
+    }
+
+    private fun validateBillingEntry(tx: LedgerTransaction, signers: Set<PublicKey>) {
+
+        requireThat {
+            "A single account must be consumed" using (tx.inputs.size == 1)
+            "A single account must be created" using (tx.outputs.size == 1)
+        }
+
+        val inState = tx.inputsOfType<AccountState>().single()
+        val outState = tx.outputsOfType<AccountState>().single()
+
+        requireThat {
+            "The account id must be the same" using
+                    inState.linearId.equals(outState.linearId)
+            "The old and new supplier must be the same" using
+                    inState.supplier.hashCode().equals(outState.supplier.hashCode())
+            "The customer details must be the same" using
+                    inState.customerDetails.equals(outState.customerDetails)
+            "All participants have signed the transaction" using
+                    signers.containsAll(keysFromParticipants(outState))
+            "There must be exactly one more entry" using
+                    outState.billingEntries.size.equals(inState.billingEntries.size + 1)
+        }
+
+        if (!inState.billingEntries.isEmpty()) {
+            // Validation relating to previous readings
+            "The time of the new entry must be greater than the previous entry" using
+                    outState.billingEntries.last().eventDT.isAfter(
+                            inState.billingEntries.last().eventDT)
+
+            "The billing history must be the same" using
+                    inState.billingEntries.equals(
+                            outState.billingEntries.subList(0, outState.billingEntries.size - 1))
         }
     }
 

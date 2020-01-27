@@ -45,9 +45,10 @@ class AccountList extends React.Component {
                     <ListGroup.Item className="bg-light">
                         <Row className="font-weight-bolder my-n1">
                             <Col className="accountId" xs={4}>Account Id</Col>
-                            <Col className="namefield">First Name</Col>
-                            <Col className="namefield">Last Name</Col>
-                            <Col className="datefield">Date Of Birth</Col>
+                            <Col className="nameField">First Name</Col>
+                            <Col className="nameField">Last Name</Col>
+                            <Col className="dateField">Date Of Birth</Col>
+                            <Col className="amountField">Current Balance</Col>
                         </Row>
                     </ListGroup.Item>
                     { this.props.accounts.map(
@@ -61,9 +62,11 @@ class AccountList extends React.Component {
                                                 account.linearId.id)}>
                                 <Row className="my-n1">
                                     <Col className="accountId" xs={4}>{account.linearId.id}</Col>
-                                    <Col className="namefield">{account.customerDetails.firstName}</Col>
-                                    <Col className="namefield">{account.customerDetails.lastName}</Col>
-                                    <Col className="datefield">{account.customerDetails.dateOfBirth}</Col>
+                                    <Col className="nameField">{account.customerDetails.firstName}</Col>
+                                    <Col className="nameField">{account.customerDetails.lastName}</Col>
+                                    <Col className="dateField">{account.customerDetails.dateOfBirth}</Col>
+                                    <Col className="amountField">
+                                        {formatCurrency(getCurrentBalance(account.billingEntries))}</Col>
                                 </Row>
                             </ListGroup.Item>
                     )}
@@ -73,7 +76,7 @@ class AccountList extends React.Component {
                 { this.props.accounts.length == 0 &&
                 <p>No accounts exist</p>
                 }
-                <ButtonGroup className="mx-n2">
+                <ButtonGroup className="ml-n2">
                     <Button variant="dark"
                             onClick={this.props.onAccountCreateRequest}>Create Account</Button>
                     <Button variant="dark"
@@ -83,7 +86,15 @@ class AccountList extends React.Component {
                             disabled={this.props.activeAccountId == ""}
                             onClick={this.props.onAccountDeleteRequest}>Delete Account</Button>
                 </ButtonGroup>
-                <ButtonGroup className="mx-3">
+                <ButtonGroup className="mx-1">
+                    <Button variant="dark"
+                            disabled={this.props.activeAccountId == ""}
+                            onClick={this.props.onBillRequest}>Generate Bill</Button>
+                    <Button variant="dark"
+                            disabled={this.props.activeAccountId == ""}
+                            onClick={this.props.onAdjustRequest}>Adjust Balance</Button>
+                </ButtonGroup>
+                <ButtonGroup>
                     <Button variant="dark"
                             disabled={this.props.activeAccountId == ""}
                             onClick={this.props.onAccountViewRequest}>View Details</Button>
@@ -301,6 +312,62 @@ class AccountDeleteDialog extends React.Component {
     }
 }
 
+class GenerateBillDialog extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.handleClose = this.handleClose.bind(this);
+    }
+
+    render() {
+        var promptText = "Generate a new bill for account " + this.props.accountId + "?"
+        return (
+            <div class="panel panel-default">
+                <Modal show={this.props.actionState == "Generate"}>
+                    <Modal.Header>
+                        <Modal.Title>Generate Bill</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        { this.props.actionResult != "OK" &&
+                          promptText
+                        }
+                        { this.props.actionResult == "FAIL" &&
+                         "Bill generation failed."
+                        }
+                        { (this.props.actionResult == "OK") &&
+                         "Bill generation successful."
+                        }
+                    </Modal.Body>
+                    <Modal.Footer>
+                        { (this.props.actionResult != "OK") &&
+                            <ButtonGroup>
+                                <Button variant="success"
+                                        disabled={this.props.actionResult == "PENDING"}
+                                        onClick={this.props.onBillSubmit}>
+                                    Submit
+                                </Button>
+                                <Button variant="secondary" onClick={this.handleClose}>
+                                    Cancel
+                                </Button>
+                            </ButtonGroup>
+                        }
+                        { (this.props.actionResult == "OK" ||
+                           this.props.actionResult == "FAIL") &&
+                              <Button onClick={this.handleClose}>
+                                  Close
+                              </Button>
+                        }
+                    </Modal.Footer>
+                </Modal>
+            </div>
+        )
+    }
+
+    handleClose() {
+        this.props.onClose();
+    }
+}
+
 class App extends React.Component {
     constructor(props) {
         super(props);
@@ -320,11 +387,15 @@ class App extends React.Component {
         this.accountCreateRequest = this.accountCreateRequest.bind(this);
         this.accountModifyRequest = this.accountModifyRequest.bind(this);
         this.accountDeleteRequest = this.accountDeleteRequest.bind(this);
+        this.billRequest = this.billRequest.bind(this);
+        this.adjustRequest = this.adjustRequest.bind(this);
         this.accountViewRequest = this.accountViewRequest.bind(this);
         this.accountSelect = this.accountSelect.bind(this);
         this.createAccount = this.createAccount.bind(this);
         this.modifyAccount = this.modifyAccount.bind(this);
         this.deleteAccount = this.deleteAccount.bind(this);
+        this.generateBill = this.generateBill.bind(this);
+        this.adjustBalance = this.adjustBalance.bind(this);
         this.finishAction = this.finishAction.bind(this);
     }
 
@@ -363,6 +434,14 @@ class App extends React.Component {
 
     accountDeleteRequest(event) {
         this.setState({currentAction: "Delete"})
+    }
+
+    billRequest(event) {
+        this.setState({currentAction: "Generate"})
+    }
+
+    adjustRequest(event) {
+        this.setState({currentAction: "Adjust"})
     }
 
     accountViewRequest(event) {
@@ -447,6 +526,56 @@ class App extends React.Component {
             })
     }
 
+    generateBill() {
+        this.setState({actionState: "Generate",
+                       actionResult: "PENDING"})
+
+        return fetch('/api/submitBillingEntry', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: this.state.activeAccountId
+            })
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
+    }
+
+    adjustBalance(reason, amount) {
+        this.setState({actionResult: "PENDING"})
+        amount = amount * -1
+
+        return fetch('/api/submitBillingAdjust', {
+            method: 'PATCH',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                accountId: this.state.activeAccountId,
+                description: reason,
+                amount: amount
+            })
+        })
+            .then(result => result.text())
+            .then(result => {
+                if ( result == "OK" ) {
+                    this.setState({actionResult: "OK"})
+                } else {
+                    this.setState({actionResult: "FAIL"})
+                }
+            })
+    }
+
     finishAction() {
         this.setState({currentAction: "",
                        actionResult: ""})
@@ -464,6 +593,8 @@ class App extends React.Component {
                              onAccountCreateRequest={this.accountCreateRequest}
                              onAccountModifyRequest={this.accountModifyRequest}
                              onAccountDeleteRequest={this.accountDeleteRequest}
+                             onBillRequest={this.billRequest}
+                             onAdjustRequest={this.adjustRequest}
                              onAccountViewRequest={this.accountViewRequest}/>
                 }
                 <AccountCreateDialog actionState={this.state.currentAction}
@@ -483,6 +614,19 @@ class App extends React.Component {
                                      accountId={this.state.activeAccountId}
                                      onClose={this.finishAction}
                                      onDeleteConfirm={this.deleteAccount}/>
+                <GenerateBillDialog  key={this.state.activeAccountId}
+                                     actionState={this.state.currentAction}
+                                     actionResult={this.state.actionResult}
+                                     accountId={this.state.activeAccountId}
+                                     onClose={this.finishAction}
+                                     onBillSubmit={this.generateBill} />
+                <BalanceAdjustDialog key={this.state.activeAccountId}
+                                     actionState={this.state.currentAction}
+                                     actionResult={this.state.actionResult}
+                                     accountDetails={this.state.activeAccount}
+                                     onClose={this.finishAction}
+                                     onAdjustSubmit={
+                                         (reason, amount) => this.adjustBalance(reason, amount)} />
                 <AccountViewDialog   key={this.state.activeAccountId}
                                      actionState={this.state.currentAction}
                                      accountDetails={this.state.activeAccount}
