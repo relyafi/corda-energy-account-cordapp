@@ -516,7 +516,6 @@ class IntegrationTests {
                     equalTo(supplierA_A?.billingEntries?.hashCode()))
 
             // Submit bill adjustment
-            assertThat(supplierA_A?.billingEntries?.size, equalTo(0))
             supplierACli.billingEntry(
                     accountAId,
                     BillingEntryAccountFlowInitiator.Companion.EntryType.ADJUST,
@@ -534,7 +533,7 @@ class IntegrationTests {
                     equalTo("Adjustment"))
             MatcherAssert.assertThat(
                     supplierA_A?.billingEntries?.get(5)?.amount,
-                    BigDecimalCloseTo(BigDecimal(153.55), EPSILON))
+                    BigDecimalCloseTo(BigDecimal(2.50), EPSILON))
             MatcherAssert.assertThat(
                     supplierA_A?.billingEntries?.get(5)?.balance,
                     BigDecimalCloseTo(BigDecimal(153.55), EPSILON))
@@ -561,7 +560,7 @@ class IntegrationTests {
                     equalTo("Payment"))
             MatcherAssert.assertThat(
                     supplierA_A?.billingEntries?.get(6)?.amount,
-                    BigDecimalCloseTo(BigDecimal(123.55), EPSILON))
+                    BigDecimalCloseTo(BigDecimal(-30.0), EPSILON))
             MatcherAssert.assertThat(
                     supplierA_A?.billingEntries?.get(6)?.balance,
                     BigDecimalCloseTo(BigDecimal(123.55), EPSILON))
@@ -587,112 +586,4 @@ class IntegrationTests {
             }
         }
     }
-
-    /*    @Test
-    fun `Account integration tests - billing`() {
-          val user = User("user1", "test", setOf(Permissions.all()))
-          driver(DriverParameters(
-                  startNodesInProcess = true,
-                  isDebug = true,
-                  cordappsForAllNodes = listOf(
-                          TestCordapp.findCordapp("net.corda.examples.energyaccount.contracts"),
-                          TestCordapp.findCordapp("net.corda.examples.energyaccount.flows"))
-          )) {
-              val (regulator, supplierA) = listOf(
-                      startNode(providedName = regulatorName, rpcUsers = listOf(user)),
-                      startNode(providedName = supplierAName, rpcUsers = listOf(user))
-              ).map { (it.getOrThrow() as InProcess) }
-
-              val (regulatorCli, supplierACli) =
-                      listOf(regulator, supplierA).map {
-                          val client = CordaRPCClient(it.rpcAddress)
-                          client.start(user.username, user.password)
-                          val api = AccountClientApi()
-                          api.rpc = it.rpc
-                          api
-                      }
-
-              // Create account
-              val accountAId = supplierACli.createAccount(customerA).linearId
-              log.info("Created account A with ID $accountAId")
-
-              var (supplierA_A, regulator_A) =
-                      listOf(supplierACli, regulatorCli)
-                              .map { it.getAccountByLinearId(accountAId) }
-
-              // Submit first billing event for account A
-              assertThat(supplierA_A?.billingEntries?.size, equalTo(0))
-              supplierACli.billingEntry(
-                      accountAId,
-                      "Bill",
-                      BigDecimal(25.50),
-                      LocalDateTime.parse("2018-12-03T10:15:30"))
-
-              supplierA_A = supplierACli.getAccountByLinearId(accountAId)
-              regulator_A = regulatorCli.getAccountByLinearId(accountAId)
-
-              assertThat(supplierA_A?.billingEntries?.size, equalTo(1))
-
-              assertThat(
-                      supplierA_A?.billingEntries?.get(0)?.eventDT.toString(),
-                      equalTo("2018-12-03T10:15:30"))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(0)?.eventDescription,
-                      equalTo("Bill"))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(0)?.amount,
-                      equalTo(BigDecimal(25.50)))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(0)?.balance,
-                      equalTo(BigDecimal(25.50)))
-
-              assertThat(
-                      regulator_A?.billingEntries?.hashCode(),
-                      equalTo(supplierA_A?.billingEntries?.hashCode()))
-
-              // Make payment against account
-              supplierACli.billingEntry(
-                      accountAId,
-                      "Payment",
-                      BigDecimal(-30.00),
-                      LocalDateTime.parse("2018-12-04T10:15:30"))
-
-              supplierA_A = supplierACli.getAccountByLinearId(accountAId)
-              regulator_A = regulatorCli.getAccountByLinearId(accountAId)
-
-              assertThat(supplierA_A?.billingEntries?.size, equalTo(2))
-
-              assertThat(
-                      supplierA_A?.billingEntries?.get(1)?.eventDT.toString(),
-                      equalTo("2018-12-04T10:15:30"))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(1)?.eventDescription,
-                      equalTo("Payment"))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(1)?.amount,
-                      equalTo(BigDecimal(-30.00)))
-              assertThat(
-                      supplierA_A?.billingEntries?.get(1)?.balance,
-                      equalTo(BigDecimal(-4.50)))
-
-              assertThat(
-                      regulator_A?.billingEntries?.hashCode(),
-                      equalTo(supplierA_A?.billingEntries?.hashCode()))
-
-              // Invalid billing entry - previous date
-              with(assertFailsWith<FlowException> {
-                  supplierACli.billingEntry(
-                          accountAId,
-                          "Payment",
-                          BigDecimal(-30.00),
-                          LocalDateTime.parse("2018-12-02T10:15:30")) }) {
-
-                  MatcherAssert.assertThat(
-                          this.message,
-                          StringContainsInOrder(listOf(
-                                  "Failed requirement: The time of the " +
-                                          "new entry must be greater than the previous entry")))
-              }
-          }
-      }*/
 }

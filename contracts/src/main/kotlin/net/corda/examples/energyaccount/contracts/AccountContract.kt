@@ -10,6 +10,9 @@ import java.security.PublicKey
 import java.time.LocalDate
 import java.time.LocalDateTime
 
+/**
+ * Defines the contract that all account states must conform to
+ */
 class AccountContract : Contract {
 
     interface Commands : CommandData {

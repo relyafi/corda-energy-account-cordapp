@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
+/**
+ * Provides a RESTful API for interacting with the CorDapp flows
+ */
 @RestController
 @RequestMapping("/api")
 class AccountClientApi() {
