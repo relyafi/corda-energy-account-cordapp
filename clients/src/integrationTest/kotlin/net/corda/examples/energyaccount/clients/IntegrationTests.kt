@@ -69,7 +69,6 @@ class IntegrationTests {
         val user = User("user1", "test", setOf(Permissions.all()))
         driver(DriverParameters(
                 startNodesInProcess = true,
-                isDebug = true,
                 cordappsForAllNodes = listOf(
                         TestCordapp.findCordapp("net.corda.examples.energyaccount.contracts"),
                         TestCordapp.findCordapp("net.corda.examples.energyaccount.flows"))
@@ -145,7 +144,7 @@ class IntegrationTests {
                 MatcherAssert.assertThat(
                         this.message,
                         StringContainsInOrder(listOf(
-                                "No session available to request signature for key")))
+                                "a required signer, but no session has been passed in for them")))
             }
 
             // Delete account B as supplier B (owner)

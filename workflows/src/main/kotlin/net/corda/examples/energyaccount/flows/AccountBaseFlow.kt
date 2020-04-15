@@ -1,6 +1,5 @@
 package net.corda.examples.energyaccount.flows
 
-import com.google.common.collect.ImmutableList
 import net.corda.core.contracts.StateAndRef
 import net.corda.core.contracts.UniqueIdentifier
 import net.corda.core.flows.FlowException
@@ -19,7 +18,7 @@ abstract class AccountBaseFlow : FlowLogic<SignedTransaction>() {
     fun getAccountByLinearId(linearId: UniqueIdentifier): StateAndRef<AccountState> {
         val queryCriteria = QueryCriteria.LinearStateQueryCriteria(
                 null,
-                ImmutableList.of(linearId),
+                listOf(linearId),
                 Vault.StateStatus.UNCONSUMED,
                 null)
 
