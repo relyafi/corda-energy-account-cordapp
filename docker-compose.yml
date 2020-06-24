@@ -1,7 +1,7 @@
 version: '3'
 services:
   notary:
-    image: corda/corda-zulu-java1.8-4.4
+    image: corda/corda-zulu-java1.8-4.5
     volumes:
     - ./build/nodes/Notary/node.conf:/etc/corda/node.conf
     - ./build/nodes/Notary/certificates:/opt/corda/certificates
@@ -14,7 +14,7 @@ services:
     ports:
     - 10113:10113
   government-regulator:
-    image: corda/corda-zulu-java1.8-4.4
+    image: corda/corda-zulu-java1.8-4.5
     volumes:
     - ./build/nodes/GovernmentRegulator/node.conf:/etc/corda/node.conf
     - ./build/nodes/GovernmentRegulator/certificates:/opt/corda/certificates
@@ -42,7 +42,7 @@ services:
     ports:
     - 10052:10052
   british-energy:
-    image: corda/corda-zulu-java1.8-4.4
+    image: corda/corda-zulu-java1.8-4.5
     volumes:
     - ./build/nodes/BritishEnergy/node.conf:/etc/corda/node.conf
     - ./build/nodes/BritishEnergy/certificates:/opt/corda/certificates
@@ -70,7 +70,7 @@ services:
     ports:
     - 10050:10050
   uk-power:
-    image: corda/corda-zulu-java1.8-4.4
+    image: corda/corda-zulu-java1.8-4.5
     volumes:
     - ./build/nodes/UKPower/node.conf:/etc/corda/node.conf
     - ./build/nodes/UKPower/certificates:/opt/corda/certificates
