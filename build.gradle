@@ -22,9 +22,7 @@ buildscript {
     repositories {
         mavenLocal()
         mavenCentral()
-        jcenter()
-        maven { url 'https://software.r3.com/artifactory/corda' }
-        maven { url 'https://repo.gradle.org/gradle/libs-releases' }
+        maven { url 'https://download.corda.net/maven/corda-releases' }
     }
 
     dependencies {
@@ -117,6 +115,7 @@ def nodeConfig = {
         }
         cordapp project(':contracts')
         cordapp project(':workflows')
+        runSchemaMigration = true
     }
     node {
         name "O=Notary,L=London,C=GB"
@@ -169,6 +168,8 @@ task prepareLocalNodes(type: net.corda.plugins.Cordform,
 task prepareDockerNodes(type: net.corda.plugins.Dockerform,
                         group: "deployment",
                         dependsOn: ['jar', 'clients:bootJar']) {
+
+    dockerImage = 'corda/corda-zulu-java-1.8-4.8'
 
     def nodesFolder = new File("build/nodes")
 

@@ -1,7 +1,7 @@
 version: '3'
 services:
   notary:
-    image: corda/corda-zulu-java1.8-4.6
+    image: corda/corda-zulu-java1.8-4.8
     volumes:
     - ./build/nodes/Notary/node.conf:/etc/corda/node.conf
     - ./build/nodes/Notary/certificates:/opt/corda/certificates
@@ -14,7 +14,7 @@ services:
     ports:
     - 10113:10113
   government-regulator:
-    image: corda/corda-zulu-java1.8-4.6
+    image: corda/corda-zulu-java1.8-4.8
     volumes:
     - ./build/nodes/GovernmentRegulator/node.conf:/etc/corda/node.conf
     - ./build/nodes/GovernmentRegulator/certificates:/opt/corda/certificates
@@ -27,22 +27,22 @@ services:
     ports:
     - 10123:10123
   government-regulator-web:
-    image: openjdk:8
+    image: eclipse-temurin:11
     depends_on:
     - government-regulator
     volumes:
     - ./clients/build/libs/clients.jar:/clients.jar
     - ./third-party/utils/wait-for-it:/wait-for-it
     command: >
-        ./wait-for-it -t 300 government-regulator:10003 -- 
+        ./wait-for-it -t 300 government-regulator:10121 -- 
             java -jar /clients.jar --server.port=10052 
-                                   --corda.host=government-regulator:10003
+                                   --corda.host=government-regulator:10121
                                    --corda.user=user1
                                    --corda.password=test
     ports:
     - 10052:10052
   british-energy:
-    image: corda/corda-zulu-java1.8-4.6
+    image: corda/corda-zulu-java1.8-4.8
     volumes:
     - ./build/nodes/BritishEnergy/node.conf:/etc/corda/node.conf
     - ./build/nodes/BritishEnergy/certificates:/opt/corda/certificates
@@ -55,22 +55,22 @@ services:
     ports:
     - 10133:10133
   british-energy-web:
-    image: openjdk:8
+    image: eclipse-temurin:11
     depends_on:
     - british-energy
     volumes:
     - ./clients/build/libs/clients.jar:/clients.jar
     - ./third-party/utils/wait-for-it:/wait-for-it
     command: >
-        ./wait-for-it -t 300 british-energy:10003 -- 
+        ./wait-for-it -t 300 british-energy:10131 -- 
             java -jar /clients.jar --server.port=10050
-                                   --corda.host=british-energy:10003
+                                   --corda.host=british-energy:10131
                                    --corda.user=user1
                                    --corda.password=test
     ports:
     - 10050:10050
   uk-power:
-    image: corda/corda-zulu-java1.8-4.6
+    image: corda/corda-zulu-java1.8-4.8
     volumes:
     - ./build/nodes/UKPower/node.conf:/etc/corda/node.conf
     - ./build/nodes/UKPower/certificates:/opt/corda/certificates
@@ -83,16 +83,16 @@ services:
     ports:
     - 10143:10143
   uk-power-web:
-    image: openjdk:8
+    image: eclipse-temurin:11
     depends_on:
     - uk-power
     volumes:
     - ./clients/build/libs/clients.jar:/clients.jar
     - ./third-party/utils/wait-for-it:/wait-for-it
     command: >
-        ./wait-for-it -t 300 uk-power:10003 -- 
+        ./wait-for-it -t 300 uk-power:10141 -- 
             java -jar /clients.jar --server.port=10051
-                                   --corda.host=uk-power:10003
+                                   --corda.host=uk-power:10141
                                    --corda.user=user1
                                    --corda.password=test
     ports:

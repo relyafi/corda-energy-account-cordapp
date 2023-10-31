@@ -48,7 +48,7 @@ class AccountFinder extends React.Component {
                 <Card.Header as="h6">Account Finder</Card.Header>
                 <Card.Body>
                     <Form onSubmit={this.handleSubmit}>
-                        <Form.Row>
+                        <Form.Group as={Row}>
                         <Form.Control className="accountId"
                                       name="accountId"
                                       ref="accountId"
@@ -58,12 +58,12 @@ class AccountFinder extends React.Component {
                                 className="ml-1"
                                 type='submit'
                                 disabled={!this.state.submitIsEnabled}>Submit</Button>
-                        </Form.Row>
-                        <Form.Row>
+                        </Form.Group>
+                        <Form.Group as={Row}>
                             <Alert variant="danger" show={this.props.lookupState=="FAIL"}>
                                    Could not find account
                             </Alert>
-                        </Form.Row>
+                        </Form.Group>
                     </Form>
                 </Card.Body>
             </Card>
@@ -426,7 +426,7 @@ class AccountTransferPanel extends React.Component {
             <Card>
                 <Card.Body>
                     <Form onSubmit={this.handleSubmit}>
-                        <Form.Row>
+                        <Form.Group as={Row}>
                             <Form.Label className="font-weight-bolder">
                                 Transfer account to
                             </Form.Label>
@@ -441,13 +441,13 @@ class AccountTransferPanel extends React.Component {
                                             it.legalIdentitiesAndCerts[0]}</option>)
                                 }
                             </Form.Control>
-                        </Form.Row>
-                        <Form.Row>
+                        </Form.Group>
+                        <Form.Group as={Row}>
                             <Button className="mt-2"
                                     variant="dark"
                                     disabled={this.props.transferResult == "PENDING"}
                                     type='submit'>Change Supplier</Button>
-                        </Form.Row>
+                        </Form.Group>
                     </Form>
                 </Card.Body>
             </Card>
