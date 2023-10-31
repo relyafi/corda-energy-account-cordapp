@@ -12,7 +12,7 @@
 6. [Vision](#vision)
 
 ### Overview
-<a name="overview">
+
 Have you ever transferred your gas / electricity supplier? If so, you'll know how painful it can be.
 Whilst there are now services to automate a lot of this for you, when you transfer supplier, you
 still have to:
