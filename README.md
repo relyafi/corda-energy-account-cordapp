@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://www.corda.net/wp-content/uploads/2016/11/fg005_corda_b.png" alt="Corda" width="500">
+  <img src="clients/src/main/resources/static/corda.png" alt="Corda" width="500">
 </p>
 <h1>Energy Account CorDapp</h1>
 
