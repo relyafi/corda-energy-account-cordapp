@@ -38,7 +38,6 @@ leveraging the power of distributed ledger technology. This means:
   timely manner without having to request information directly from a supplier.
 
 ### Getting started
-<a name="getting-started"/>
 
 It is recommended that you follow the [CorDapp getting started guide](https://docs.corda.net/quickstart-index.html)
 to ensure you have the requisite software and environment.
@@ -60,6 +59,7 @@ The `gradlew` and `runnodes` scripts referred to in the below steps have two var
 versions on Windows, and the scripts without an extension on Linux.
 
 ##### Running with Docker Compose
+
 As you might expect, you must have Docker Compose installed on your machine in order for this to work.
 To run the application in this mode, you should:
 
@@ -72,6 +72,7 @@ To run the application in this mode, you should:
 To close the app, simply end the process in the terminal window.
 
 ##### Running Locally
+
 To run the application locally, you should:
 
 1. Run `gradlew clean prepareLocalNodes`. You only need to run this the first time
@@ -97,7 +98,7 @@ To run the application locally, you should:
  also terminate each gradle task for the web servers manually (since these run synchronously).
 
 ### Using the app
-<a name="using-the-app"/>
+
 The supplier and government regulator nodes provide web interfaces via ports that are mapped to your
 local machine:
 
@@ -124,6 +125,7 @@ Each page provides different views of the data:
 You should create accounts via the supplier portal prior to using the other pages.
 
 ##### Baseline data
+
 For convenience, a baseline data set is provided to allow quick creation of a number of accounts
 after initialising the nodes. To load this data, you must install the 
 [Postman](https://www.getpostman.com/) application. You can then use the following files under
@@ -133,12 +135,13 @@ after initialising the nodes. To load this data, you must install the
 * `baselineData.json` - Data file to load within the collection runner window.
 
 ##### Known issues
+
 * Viewing customer details in the supplier portal does not update following account changes, meter reading
   submissions or billing events. Selecting another customer row and re-selecting the original customer
   prior to viewing the account details again works around this issue.
 
 ### Advanced
-<a name="advanced"/>
+
 When running via Docker, it is possible to access the Corda shells for each node via SSH on ports
 mapped to your local machine:
 
@@ -150,7 +153,7 @@ mapped to your local machine:
 | Government Regulator | 10123 |
 
 ### Future enhancements
-<a name="future-enhancements"/>
+
 As this is a proof of concept, only basic functionality has been implemented. Some ideas for future
 enhancements include:
 
@@ -169,7 +172,7 @@ enhancements include:
   insurance, utilities, property rental etc.
   
 ### Vision
-<a name="vision"/>
+
 This proof of concept CorDapp provides a simple implementation of the first phase of developing a
 more general energy network:
 
